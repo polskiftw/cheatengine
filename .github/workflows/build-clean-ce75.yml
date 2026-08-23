@@ -5,6 +5,9 @@ on:
   push:
     paths:
       - '.github/workflows/build-clean-ce75.yml'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
