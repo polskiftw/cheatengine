@@ -57,6 +57,37 @@ jobs:
           if (!(Test-Path $exe)) { throw 'Expected cheatengine-x86_64.exe was not produced' }
           Write-Host "Built: $exe"
 
+      - name: Build .NET data collectors from source
+        shell: pwsh
+        run: |
+          $sln = '.\upstream\Cheat Engine\DotNetDataCollector\DotNetDataCollector.sln'
+          $proj = '.\upstream\Cheat Engine\DotNetDataCollector\DotNetDataCollector\DotNetDataCollector.vcxproj'
+
+          # CE 7.5's project targets the older VS2017/Windows 8.1 toolchain.
+          # Build the same source using the VS2022 toolchain available on the runner.
+          $xml = Get-Content $proj -Raw
+          $xml = $xml.Replace('<PlatformToolset>v141</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>')
+          $xml = $xml.Replace('<WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>', '<WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>')
+          Set-Content -Path $proj -Value $xml -Encoding utf8
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = (& $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1)
+          if (!$msbuild) { throw 'MSBuild not found on runner' }
+          Write-Host "MSBuild: $msbuild"
+
+          & $msbuild $sln /m /t:Build /p:Configuration=Release /p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw "DotNetDataCollector x64 build failed with exit code $LASTEXITCODE" }
+
+          & $msbuild $sln /m /t:Build /p:Configuration=Release /p:Platform=Win32
+          if ($LASTEXITCODE -ne 0) { throw "DotNetDataCollector Win32 build failed with exit code $LASTEXITCODE" }
+
+          $dc64 = '.\upstream\Cheat Engine\bin\DotNetDataCollector64.exe'
+          $dc32 = '.\upstream\Cheat Engine\bin\DotNetDataCollector32.exe'
+          if (!(Test-Path $dc64)) { throw 'Expected DotNetDataCollector64.exe was not produced' }
+          if (!(Test-Path $dc32)) { throw 'Expected DotNetDataCollector32.exe was not produced' }
+          Write-Host "Built: $dc64"
+          Write-Host "Built: $dc32"
+
       - name: Package clean portable folder
         shell: pwsh
         run: |
@@ -65,14 +96,20 @@ jobs:
           New-Item -ItemType Directory -Path $dst -Force | Out-Null
           Copy-Item "$src\*" $dst -Recurse -Force
 
-          # The x64 executable above was freshly compiled in this run. Remove
-          # obvious build/debug leftovers if any are present; keep normal CE
-          # support files so ordinary .CT tables can work.
+          # Remove build/debug leftovers; keep normal CE support files plus the
+          # freshly built .NET data collectors needed for managed-game symbols.
           Get-ChildItem $dst -Recurse -File -Include '*.dbg','*.pdb','*.o','*.ppu' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
           $exe = Join-Path $dst 'cheatengine-x86_64.exe'
-          if (!(Test-Path $exe)) { throw 'Packaged executable is missing' }
+          $dc64 = Join-Path $dst 'DotNetDataCollector64.exe'
+          $dc32 = Join-Path $dst 'DotNetDataCollector32.exe'
+          if (!(Test-Path $exe)) { throw 'Packaged Cheat Engine executable is missing' }
+          if (!(Test-Path $dc64)) { throw 'Packaged x64 .NET collector is missing' }
+          if (!(Test-Path $dc32)) { throw 'Packaged x86 .NET collector is missing' }
+
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          $hashDc64 = (Get-FileHash $dc64 -Algorithm SHA256).Hash
+          $hashDc32 = (Get-FileHash $dc32 -Algorithm SHA256).Hash
           $size = (Get-Item $exe).Length
 
           @"
@@ -82,18 +119,24 @@ jobs:
           Upstream repository: https://github.com/cheat-engine/cheat-engine
           Upstream ref: 7.5
           Upstream commit: $env:UPSTREAM_COMMIT
-          Project: Cheat Engine/cheatengine.lpi
-          Build mode: Release 64-Bit
-          Compiler: Lazarus 2.2.2 / FPC 3.2.2
+          Main project: Cheat Engine/cheatengine.lpi
+          Main build mode: Release 64-Bit
+          Main compiler: Lazarus 2.2.2 / FPC 3.2.2
           Main executable: cheatengine-x86_64.exe
           Executable size: $size bytes
-          SHA-256: $hash
+          Main SHA-256: $hash
+
+          Additional source-built support:
+          DotNetDataCollector64.exe SHA-256: $hashDc64
+          DotNetDataCollector32.exe SHA-256: $hashDc32
 
           This artifact was built from source and does not contain or use the
           Cheat Engine public bundled-offer installer.
           "@ | Set-Content (Join-Path $dst 'BUILD-PROVENANCE.txt') -Encoding utf8
 
-          Write-Host "SHA-256: $hash"
+          Write-Host "CE SHA-256: $hash"
+          Write-Host "DotNetDataCollector64 SHA-256: $hashDc64"
+          Write-Host "DotNetDataCollector32 SHA-256: $hashDc32"
 
       - name: Upload clean build
         uses: actions/upload-artifact@v4
