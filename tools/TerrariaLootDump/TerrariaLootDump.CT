@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="45">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1</ID>
+      <Description>"DUMP TERRARIA LOOT DATABASE"</Description>
+      <Color>C800C8</Color>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+
+local origin=TrainerOrigin
+if origin==nil or origin=='' then
+  error('Open TerrariaLootDump.CT from disk so Cheat Engine knows where its DLL lives.')
+end
+
+local last=origin:sub(-1)
+if last~='\\' and last~='/' then origin=origin..'\\' end
+local dll=origin..'TerrariaLootDump.dll'
+local f=io.open(dll,'rb')
+if f==nil then
+  error('Could not find '..dll..'\n\nKeep TerrariaLootDump.dll beside this CT file.')
+end
+f:close()
+
+local pid=getOpenedProcessID()
+if pid==nil or pid==0 then
+  error('No process selected. Start Terraria, attach Cheat Engine to Terraria.exe, then tick this again.')
+end
+
+if type(injectDotNetDLL)~='function' then
+  error('injectDotNetDLL is unavailable. This Cheat Engine build needs its normal autorun/DotNetInject.lua support file.')
+end
+
+local result,err=injectDotNetDLL(dll,'TerrariaLootDump.EntryPoint','Run','')
+if err~=nil then
+  error('Cheat Engine could not inject/run the dumper. injectDotNetDLL error: '..tostring(err))
+end
+if result~=0 then
+  error('The dumper ran but returned error '..tostring(result)..'. Check '..origin..'dump\\ERROR.txt')
+end
+
+showMessage('Terraria loot dump complete.\n\nOutput folder:\n'..origin..'dump\n\nSend me that folder (or zip it) and I can map exactly which loot rules each cheat affects.')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+</CheatTable>
