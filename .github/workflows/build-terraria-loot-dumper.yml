@@ -1,0 +1,56 @@
+name: Build Terraria loot dumper
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/TerrariaLootDump/**'
+      - '.github/workflows/build-terraria-loot-dumper.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build .NET Framework 4.8 dumper
+        shell: pwsh
+        run: |
+          dotnet --info
+          dotnet build '.\tools\TerrariaLootDump\TerrariaLootDump.csproj' -c Release
+          $dll = '.\tools\TerrariaLootDump\bin\Release\net48\TerrariaLootDump.dll'
+          if (!(Test-Path $dll)) { throw 'TerrariaLootDump.dll was not produced' }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $dst = '.\dist\TerrariaLootDump'
+          New-Item -ItemType Directory -Path $dst -Force | Out-Null
+          Copy-Item '.\tools\TerrariaLootDump\bin\Release\net48\TerrariaLootDump.dll' $dst
+          Copy-Item '.\tools\TerrariaLootDump\TerrariaLootDump.CT' $dst
+          Copy-Item '.\tools\TerrariaLootDump\README.txt' $dst
+          $hash = (Get-FileHash (Join-Path $dst 'TerrariaLootDump.dll') -Algorithm SHA256).Hash
+          @"
+          Build provenance
+          ================
+          Built by GitHub Actions on windows-2022
+          Target framework: .NET Framework 4.8
+          Source project: tools/TerrariaLootDump/TerrariaLootDump.csproj
+          DLL SHA-256: $hash
+          "@ | Set-Content (Join-Path $dst 'BUILD-PROVENANCE.txt') -Encoding utf8
+          Get-ChildItem $dst | Format-Table Name,Length
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: TerrariaLootDump
+          path: dist/TerrariaLootDump
+          if-no-files-found: error
+          compression-level: 9
