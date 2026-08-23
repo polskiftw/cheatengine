@@ -1,0 +1,101 @@
+name: Build clean Cheat Engine 7.5
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-clean-ce75.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+
+      - name: Check out official Cheat Engine 7.5 source
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch 7.5 --recurse-submodules https://github.com/cheat-engine/cheat-engine.git upstream
+          $commit = (git -C upstream rev-parse HEAD).Trim()
+          "UPSTREAM_COMMIT=$commit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Official Cheat Engine source commit: $commit"
+
+      - name: Download official Lazarus 2.2.2 / FPC 3.2.2 toolchain
+        shell: pwsh
+        run: |
+          $base = 'https://downloads.sourceforge.net/project/lazarus/Lazarus%20Windows%2064%20bits/Lazarus%202.2.2'
+          curl.exe -L --fail --retry 5 --retry-delay 5 "$base/lazarus-2.2.2-fpc-3.2.2-win64.exe" -o lazarus-main.exe
+          curl.exe -L --fail --retry 5 --retry-delay 5 "$base/lazarus-2.2.2-fpc-3.2.2-cross-i386-win32-win64.exe" -o lazarus-cross.exe
+          if (!(Test-Path lazarus-main.exe) -or ((Get-Item lazarus-main.exe).Length -lt 10MB)) { throw 'Lazarus installer download looks invalid' }
+          if (!(Test-Path lazarus-cross.exe) -or ((Get-Item lazarus-cross.exe).Length -lt 5MB)) { throw 'Lazarus cross-compiler installer download looks invalid' }
+
+      - name: Install Lazarus toolchain
+        shell: pwsh
+        run: |
+          $args = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=C:\Lazarus')
+          $p = Start-Process -FilePath "$PWD\lazarus-main.exe" -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Main Lazarus installer exited with $($p.ExitCode)" }
+          $p = Start-Process -FilePath "$PWD\lazarus-cross.exe" -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Lazarus cross-compiler installer exited with $($p.ExitCode)" }
+          if (!(Test-Path 'C:\Lazarus\lazbuild.exe')) { throw 'lazbuild.exe was not installed' }
+          & 'C:\Lazarus\lazbuild.exe' --version
+
+      - name: Build Cheat Engine 7.5 x64 from source
+        shell: pwsh
+        run: |
+          & 'C:\Lazarus\lazbuild.exe' '--build-mode=Release 64-Bit' '.\upstream\Cheat Engine\cheatengine.lpi'
+          if ($LASTEXITCODE -ne 0) { throw "lazbuild failed with exit code $LASTEXITCODE" }
+          $exe = '.\upstream\Cheat Engine\bin\cheatengine-x86_64.exe'
+          if (!(Test-Path $exe)) { throw 'Expected cheatengine-x86_64.exe was not produced' }
+          Write-Host "Built: $exe"
+
+      - name: Package clean portable folder
+        shell: pwsh
+        run: |
+          $src = '.\upstream\Cheat Engine\bin'
+          $dst = '.\dist\CheatEngine75-clean-x64'
+          New-Item -ItemType Directory -Path $dst -Force | Out-Null
+          Copy-Item "$src\*" $dst -Recurse -Force
+
+          # The x64 executable above was freshly compiled in this run. Remove
+          # obvious build/debug leftovers if any are present; keep normal CE
+          # support files so ordinary .CT tables can work.
+          Get-ChildItem $dst -Recurse -File -Include '*.dbg','*.pdb','*.o','*.ppu' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
+          $exe = Join-Path $dst 'cheatengine-x86_64.exe'
+          if (!(Test-Path $exe)) { throw 'Packaged executable is missing' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          $size = (Get-Item $exe).Length
+
+          @"
+          Clean Cheat Engine 7.5 x64 build
+          =================================
+          Built by: GitHub Actions
+          Upstream repository: https://github.com/cheat-engine/cheat-engine
+          Upstream ref: 7.5
+          Upstream commit: $env:UPSTREAM_COMMIT
+          Project: Cheat Engine/cheatengine.lpi
+          Build mode: Release 64-Bit
+          Compiler: Lazarus 2.2.2 / FPC 3.2.2
+          Main executable: cheatengine-x86_64.exe
+          Executable size: $size bytes
+          SHA-256: $hash
+
+          This artifact was built from source and does not contain or use the
+          Cheat Engine public bundled-offer installer.
+          "@ | Set-Content (Join-Path $dst 'BUILD-PROVENANCE.txt') -Encoding utf8
+
+          Write-Host "SHA-256: $hash"
+
+      - name: Upload clean build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CheatEngine75-clean-x64
+          path: dist/CheatEngine75-clean-x64
+          if-no-files-found: error
+          compression-level: 9
