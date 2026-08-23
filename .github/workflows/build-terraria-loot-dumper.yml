@@ -20,6 +20,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Apply exhaustive runtime-dump enhancements
+        shell: pwsh
+        run: |
+          & '.\tools\TerrariaLootDump\EnhanceBuild.ps1'
+
       - name: Build .NET Framework 4.8 dumper
         shell: pwsh
         run: |
@@ -43,6 +48,7 @@ jobs:
           Built by GitHub Actions on windows-2022
           Target framework: .NET Framework 4.8
           Source project: tools/TerrariaLootDump/TerrariaLootDump.csproj
+          Build enhancement: includes negative NPC net IDs and TryDroppingItem implementation metadata
           DLL SHA-256: $hash
           "@ | Set-Content (Join-Path $dst 'BUILD-PROVENANCE.txt') -Encoding utf8
           Get-ChildItem $dst | Format-Table Name,Length
