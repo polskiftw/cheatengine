@@ -69,7 +69,15 @@ $helpers = @'
 if (-not $s.Contains($marker)) { throw 'Could not add method/inheritance helpers' }
 $s = $s.Replace($marker, $helpers)
 
-$s = $s.Replace('            manifest.AppendLine("NPCID.Count: " + dump.npcIdCount);', '            manifest.AppendLine("NPCID.Count: " + dump.npcIdCount);`r`n            manifest.AppendLine("NPCID.NegativeIDCount / first dumped net ID: " + negativeNpcStart);')
+$old = @'
+            manifest.AppendLine("NPCID.Count: " + dump.npcIdCount);
+'@
+$new = @'
+            manifest.AppendLine("NPCID.Count: " + dump.npcIdCount);
+            manifest.AppendLine("NPCID.NegativeIDCount / first dumped net ID: " + negativeNpcStart);
+'@
+if (-not $s.Contains($old)) { throw 'Could not patch manifest NPC range' }
+$s = $s.Replace($old, $new)
 
 Set-Content -Path $p -Value $s -Encoding UTF8
 Write-Host "Enhanced build source: negative NPC net IDs + TryDroppingItem implementation metadata"
