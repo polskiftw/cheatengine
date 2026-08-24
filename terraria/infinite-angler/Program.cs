@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Mono.Cecil;
@@ -28,9 +29,14 @@ internal static class Program
         FieldDefinition NetMode,
         FieldDefinition AnglerQuestFinished,
         FieldDefinition AnglerWhoFinishedToday,
-        IReadOnlyList<Instruction> RewardCalls) : IDisposable
+        IReadOnlyList<Instruction> RewardCalls,
+        DefaultAssemblyResolver Resolver) : IDisposable
     {
-        public void Dispose() => Assembly.Dispose();
+        public void Dispose()
+        {
+            Assembly.Dispose();
+            Resolver.Dispose();
+        }
     }
 
     public static int Main(string[] args)
@@ -61,6 +67,8 @@ internal static class Program
         {
             Console.Error.WriteLine();
             Console.Error.WriteLine("ERROR: " + ex.Message);
+            if (Environment.GetEnvironmentVariable("CI") is not null)
+                Console.Error.WriteLine(ex);
             Console.Error.WriteLine("No intentional replacement of Terraria.exe was performed after this failure.");
             return 1;
         }
@@ -136,9 +144,13 @@ internal static class Program
         {
             plan.Assembly.Write(tempPath, new WriterParameters { WriteSymbols = false });
 
-            // Make sure Cecil can read what it just emitted before replacing the game executable.
             using (var verification = AssemblyDefinition.ReadAssembly(tempPath,
-                       new ReaderParameters { ReadSymbols = false, InMemory = true }))
+                       new ReaderParameters
+                       {
+                           ReadSymbols = false,
+                           InMemory = true,
+                           AssemblyResolver = plan.Resolver
+                       }))
             {
                 if (!HasMarker(verification.MainModule))
                     throw new InvalidOperationException("Patched-file verification failed: patch marker missing.");
@@ -204,6 +216,7 @@ internal static class Program
 
     private static PatchPlan BuildPlan(string target)
     {
+        var resolver = CreateResolver(target);
         AssemblyDefinition assembly;
         try
         {
@@ -211,13 +224,20 @@ internal static class Program
             {
                 ReadSymbols = false,
                 InMemory = true,
-                ReadingMode = ReadingMode.Immediate
+                ReadingMode = ReadingMode.Immediate,
+                AssemblyResolver = resolver
             });
         }
         catch (BadImageFormatException ex)
         {
+            resolver.Dispose();
             throw new InvalidOperationException(
                 "Terraria.exe is not a managed assembly Mono.Cecil can patch. This Terraria build needs a different loader strategy; no changes were made.", ex);
+        }
+        catch
+        {
+            resolver.Dispose();
+            throw;
         }
 
         try
@@ -289,13 +309,42 @@ internal static class Program
 
             return new PatchPlan(
                 assembly, module, main, best[0].Method, swap, netMode, finished, finishedToday,
-                best[0].RewardCalls);
+                best[0].RewardCalls, resolver);
         }
         catch
         {
             assembly.Dispose();
+            resolver.Dispose();
             throw;
         }
+    }
+
+    private static DefaultAssemblyResolver CreateResolver(string target)
+    {
+        var resolver = new DefaultAssemblyResolver();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+                return;
+            path = Path.GetFullPath(path);
+            if (seen.Add(path))
+                resolver.AddSearchDirectory(path);
+        }
+
+        Add(Path.GetDirectoryName(target));
+        Add(AppContext.BaseDirectory);
+        try
+        {
+            Add(RuntimeEnvironment.GetRuntimeDirectory());
+        }
+        catch
+        {
+            // The target directory and Cecil's normal resolver behavior remain available.
+        }
+
+        return resolver;
     }
 
     private static void ApplyPatch(PatchPlan plan)
@@ -307,8 +356,6 @@ internal static class Program
         var il = body.GetILProcessor();
         var first = body.Instructions.First();
 
-        // Clear only this process's cached completion state whenever the Angler turn-in UI runs.
-        // A multiplayer server may still remember packet 75; the client no longer treats that as a cooldown.
         var clearMethod = new MethodReference(
             "Clear",
             plan.Module.TypeSystem.Void,
@@ -322,8 +369,6 @@ internal static class Program
         il.InsertBefore(first, il.Create(OpCodes.Ldsfld, plan.AnglerWhoFinishedToday));
         il.InsertBefore(first, il.Create(OpCodes.Callvirt, clearMethod));
 
-        // GetAnglerReward is reached only after a successful fish turn-in. Immediately roll the next
-        // quest locally using Terraria's own AnglerQuestSwap implementation.
         foreach (var rewardCall in plan.RewardCalls.ToArray())
             il.InsertAfter(rewardCall, il.Create(OpCodes.Call, helper));
     }
@@ -343,9 +388,6 @@ internal static class Program
         var callSwapLabel = il.Create(OpCodes.Nop);
         var ret = il.Create(OpCodes.Ret);
 
-        // Vanilla AnglerQuestSwap deliberately returns immediately on a multiplayer client (netMode == 1).
-        // Temporarily present this one synchronous local call as single-player, then restore netMode.
-        // This changes only the local client's quest/cache; it does not roll the host/server's quest.
         il.Append(il.Create(OpCodes.Ldsfld, plan.NetMode));
         il.Append(il.Create(OpCodes.Stloc, oldMode));
         il.Append(il.Create(OpCodes.Ldloc, oldMode));
