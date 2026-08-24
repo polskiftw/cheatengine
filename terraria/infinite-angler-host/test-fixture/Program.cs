@@ -1,18 +1,32 @@
 using Terraria.Localization;
 
+namespace Terraria.ID
+{
+    public static class MessageID
+    {
+        // Deliberately NOT vanilla's current 74/75/76 values.
+        // The patcher must discover these constants instead of hardcoding them.
+        public const byte AnglerQuest = 174;
+        public const byte AnglerQuestFinished = 175;
+        public const byte QuestsCountSync = 176;
+    }
+}
+
 namespace Terraria
 {
     public static class Main
     {
         public static int netMode = 2;
         public static int anglerQuest = 7;
-        public static bool anglerQuestFinished;
+        public static bool anglerQuestFinished = true;
         public static List<string> anglerWhoFinishedToday = new();
         public static Player[] player = Enumerable.Range(0, 8).Select(_ => new Player()).ToArray();
 
         public static void AnglerQuestSwap()
         {
-            // Deterministic stand-in for vanilla's valid quest reroll.
+            // Vanilla-shaped state mutation: a quest swap resets the global finished flag
+            // and selects a new valid quest. It must NOT touch the per-name completion list.
+            anglerQuestFinished = false;
             anglerQuest = (anglerQuest + 1) % 40;
         }
     }
@@ -29,7 +43,7 @@ namespace Terraria
 
         public void GetData(int start, int length, out int messageType)
         {
-            messageType = 75;
+            messageType = ID.MessageID.AnglerQuestFinished;
             if (Main.netMode != 2)
                 return;
 
@@ -37,17 +51,13 @@ namespace Terraria
             if (Main.anglerWhoFinishedToday.Contains(name))
                 return;
 
-            // This exact vanilla-shaped Add is where the host patch injects its completion hook.
             Main.anglerWhoFinishedToday.Add(name);
         }
     }
 
     public static class NetMessage
     {
-        public static int LastMessageType = -1;
-        public static int LastRemoteClient = -1;
-        public static int LastQuest = -1;
-        public static bool LastCompleted = true;
+        public static readonly List<(int MessageType, int RemoteClient, int Quest, bool Completed)> Sent = new();
 
         public static void SendData(
             int msgType,
@@ -62,13 +72,13 @@ namespace Terraria
             int number6 = 0,
             int number7 = 0)
         {
-            // Preserve the same structural dependencies as vanilla packet 74 serialization.
-            if (msgType == 74)
+            if (msgType == ID.MessageID.AnglerQuest)
             {
-                LastMessageType = msgType;
-                LastRemoteClient = remoteClient;
-                LastQuest = Main.anglerQuest;
-                LastCompleted = Main.anglerWhoFinishedToday.Contains(text!.ToString());
+                Sent.Add((
+                    msgType,
+                    remoteClient,
+                    Main.anglerQuest,
+                    Main.anglerWhoFinishedToday.Contains(text!.ToString())));
             }
         }
     }
@@ -93,8 +103,8 @@ namespace Fixture
         public bool Completed { get; private set; } = true;
         public bool CanQuest => !Completed;
 
-        // This class is never patched. It represents an ordinary client consuming packet 74.
-        public void ReceiveQuestPacket(byte quest, bool completed)
+        // Never patched: this is an ordinary Terraria client consuming the vanilla packet state.
+        public void ReceiveQuestPacket(int quest, bool completed)
         {
             Quest = quest;
             Completed = completed;
@@ -107,27 +117,59 @@ namespace Fixture
         {
             Terraria.Main.netMode = 2;
             Terraria.Main.anglerQuest = 7;
+            Terraria.Main.anglerQuestFinished = true;
             Terraria.Main.anglerWhoFinishedToday.Clear();
+            Terraria.Main.anglerWhoFinishedToday.Add("AlreadyDone");
             Terraria.Main.player[1].name = "VanillaGuest";
+            Terraria.Main.player[2].name = "SecondGuest";
+            Terraria.NetMessage.Sent.Clear();
 
-            var buffer = new Terraria.MessageBuffer { whoAmI = 1 };
-            buffer.GetData(0, 0, out _);
+            Complete(1);
+            Require(Terraria.Main.netMode == 2, "host netMode was not restored after guest 1");
+            Require(Terraria.Main.anglerQuest == 7, "host global quest was not restored after guest 1");
+            Require(Terraria.Main.anglerQuestFinished, "host global anglerQuestFinished was not restored after guest 1");
+            Require(Terraria.Main.anglerWhoFinishedToday.Contains("AlreadyDone"), "another player's completion state was lost");
+            Require(!Terraria.Main.anglerWhoFinishedToday.Contains("VanillaGuest"), "guest 1 cooldown name remained recorded");
 
-            Require(Terraria.Main.netMode == 2, "host netMode was not restored");
-            Require(Terraria.Main.anglerQuest == 7, "host global quest was not restored");
-            Require(!Terraria.Main.anglerWhoFinishedToday.Contains("VanillaGuest"), "guest cooldown name remained recorded");
-            Require(Terraria.NetMessage.LastMessageType == 74, "host did not send vanilla Angler packet 74");
-            Require(Terraria.NetMessage.LastRemoteClient == 1, "packet 74 was not targeted only to the completing guest");
-            Require(Terraria.NetMessage.LastQuest == 8, "next quest was not vanilla-rerolled");
-            Require(!Terraria.NetMessage.LastCompleted, "packet 74 still marked the guest completed");
+            Complete(2);
+            Require(Terraria.Main.netMode == 2, "host netMode was not restored after guest 2");
+            Require(Terraria.Main.anglerQuest == 7, "host global quest was not restored after guest 2");
+            Require(Terraria.Main.anglerQuestFinished, "host global anglerQuestFinished was not restored after guest 2");
+            Require(Terraria.Main.anglerWhoFinishedToday.Contains("AlreadyDone"), "existing completion state was altered by guest 2");
+            Require(!Terraria.Main.anglerWhoFinishedToday.Contains("SecondGuest"), "guest 2 cooldown name remained recorded");
 
-            var guest = new VanillaGuest();
-            guest.ReceiveQuestPacket((byte)Terraria.NetMessage.LastQuest, Terraria.NetMessage.LastCompleted);
-            Require(guest.Quest == 8, "unmodified guest did not receive the new quest");
-            Require(guest.CanQuest, "unmodified guest remained cooldown-locked");
+            // Repeat a completion for guest 1 to prove the server-side cooldown really stays removed.
+            Complete(1);
 
-            Console.WriteLine("PASS: host-only patch reset one vanilla guest, sent a private packet 74, and restored shared host state.");
+            Require(Terraria.NetMessage.Sent.Count == 3, $"expected three private quest packets, got {Terraria.NetMessage.Sent.Count}");
+            AssertPacket(0, 1);
+            AssertPacket(1, 2);
+            AssertPacket(2, 1);
+
+            var vanillaGuest = new VanillaGuest();
+            var first = Terraria.NetMessage.Sent[0];
+            vanillaGuest.ReceiveQuestPacket(first.Quest, first.Completed);
+            Require(vanillaGuest.Quest == 8, "unmodified guest did not receive the rerolled quest");
+            Require(vanillaGuest.CanQuest, "unmodified guest remained cooldown-locked");
+
+            Console.WriteLine("PASS: patched server handled two vanilla guests, repeated quests, dynamic MessageID, and preserved shared host state.");
             return 0;
+        }
+
+        private static void Complete(int whoAmI)
+        {
+            var buffer = new Terraria.MessageBuffer { whoAmI = whoAmI };
+            buffer.GetData(0, 0, out int messageType);
+            Require(messageType == Terraria.ID.MessageID.AnglerQuestFinished, "fixture completion message ID changed unexpectedly");
+        }
+
+        private static void AssertPacket(int index, int expectedClient)
+        {
+            var packet = Terraria.NetMessage.Sent[index];
+            Require(packet.MessageType == Terraria.ID.MessageID.AnglerQuest, $"packet {index} used a hardcoded/wrong message ID");
+            Require(packet.RemoteClient == expectedClient, $"packet {index} targeted client {packet.RemoteClient}, expected {expectedClient}");
+            Require(packet.Quest == 8, $"packet {index} carried quest {packet.Quest}, expected rerolled quest 8");
+            Require(!packet.Completed, $"packet {index} still marked the completing guest finished");
         }
 
         private static void Require(bool condition, string message)
