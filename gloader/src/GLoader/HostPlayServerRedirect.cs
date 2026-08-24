@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using HarmonyLib;
 
 namespace GLoader
@@ -92,10 +93,40 @@ namespace GLoader
 
         private static string Quote(string value)
         {
-            // Windows paths cannot contain a literal quote, so normal command-line
-            // quoting is sufficient here. GetFullPath also removes trailing separators
-            // from the executable path and normalizes the Mods path we pass in.
-            return "\"" + value + "\"";
+            if (value == null)
+            {
+                return "\"\"";
+            }
+
+            var builder = new StringBuilder();
+            builder.Append('"');
+            var backslashes = 0;
+
+            foreach (var character in value)
+            {
+                if (character == '\\')
+                {
+                    backslashes++;
+                    continue;
+                }
+
+                if (character == '"')
+                {
+                    builder.Append('\\', backslashes * 2 + 1);
+                    builder.Append('"');
+                    backslashes = 0;
+                    continue;
+                }
+
+                builder.Append('\\', backslashes);
+                backslashes = 0;
+                builder.Append(character);
+            }
+
+            // Backslashes immediately before the closing quote must be doubled.
+            builder.Append('\\', backslashes * 2);
+            builder.Append('"');
+            return builder.ToString();
         }
     }
 }
