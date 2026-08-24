@@ -26,15 +26,29 @@ namespace GLoader
                 var modsDirectory = string.IsNullOrWhiteSpace(options.ModsPath)
                     ? Path.Combine(loaderDirectory, "Mods")
                     : Path.GetFullPath(options.ModsPath);
+                var isServerTarget = string.Equals(
+                    Path.GetFileName(targetPath),
+                    "TerrariaServer.exe",
+                    StringComparison.OrdinalIgnoreCase);
 
-                Log.Initialize(Path.Combine(loaderDirectory, "logs"));
+                Log.Initialize(
+                    Path.Combine(loaderDirectory, "logs"),
+                    isServerTarget ? "server" : "client");
                 Log.Info("gloader 0.1.0-alpha");
                 Log.Info("Target: " + targetPath);
                 Log.Info("Target version: " + GetFileVersion(targetPath));
+                Log.Info("Mode: " + (isServerTarget ? "server" : "client"));
                 Log.Info("Mods: " + modsDirectory);
 
                 Directory.SetCurrentDirectory(gameDirectory);
                 NativeLibrarySearch.UseDirectory(gameDirectory);
+
+                if (!isServerTarget && !options.DisableMods)
+                {
+                    HostPlayServerRedirect.Install(
+                        Assembly.GetExecutingAssembly().Location,
+                        modsDirectory);
+                }
 
                 using (var resolver = new ManagedAssemblyResolver(gameDirectory, loaderDirectory))
                 {
@@ -42,7 +56,12 @@ namespace GLoader
 
                     if (!options.DisableMods)
                     {
-                        ModRuntime.LoadAll(modsDirectory, gameAssembly, gameDirectory, loaderDirectory);
+                        ModRuntime.LoadAll(
+                            modsDirectory,
+                            gameAssembly,
+                            gameDirectory,
+                            loaderDirectory,
+                            isServerTarget);
                     }
                     else
                     {
@@ -68,7 +87,7 @@ namespace GLoader
                 Console.Error.WriteLine("gloader failed:");
                 Console.Error.WriteLine(ex);
                 Console.Error.WriteLine();
-                Console.Error.WriteLine("See gloader\\logs\\gloader.log for details.");
+                Console.Error.WriteLine("See gloader\\logs\\gloader-client.log or gloader-server.log for details.");
                 return 1;
             }
             finally
