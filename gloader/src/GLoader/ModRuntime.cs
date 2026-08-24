@@ -55,7 +55,7 @@ namespace GLoader
             {
                 try
                 {
-                    harmony?.UnpatchSelf();
+                    harmony?.UnpatchAll(harmonyId);
                 }
                 catch (Exception cleanupEx)
                 {
