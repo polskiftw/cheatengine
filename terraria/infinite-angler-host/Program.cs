@@ -208,8 +208,14 @@ internal static class Program
         var name = new VariableDefinition(p.Module.TypeSystem.String);
         h.Body.Variables.Add(oldQuest); h.Body.Variables.Add(oldMode); h.Body.Variables.Add(name);
 
-        var remove = new MethodReference("Remove", p.Module.TypeSystem.Boolean, p.Module.ImportReference(p.FinishedToday.FieldType)) { HasThis = true };
-        remove.Parameters.Add(new ParameterDefinition(p.Module.TypeSystem.String));
+        var add = (MethodReference)p.AddCall.Operand;
+        var remove = new MethodReference("Remove", p.Module.TypeSystem.Boolean, add.DeclaringType)
+        {
+            HasThis = add.HasThis,
+            ExplicitThis = add.ExplicitThis,
+            CallingConvention = add.CallingConvention
+        };
+        remove.Parameters.Add(new ParameterDefinition(add.Parameters[0].ParameterType));
         var il = h.Body.GetILProcessor();
         var ret = il.Create(OpCodes.Ret);
 
