@@ -200,7 +200,7 @@ internal static class Program
     static MethodDefinition Helper(Plan p)
     {
         var h = new MethodDefinition("__InfiniteAnglerHost_OnQuestCompleted",
-            MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig, p.Module.TypeSystem.Void);
+            MethodAttributes.Assembly | MethodAttributes.Static | MethodAttributes.HideBySig, p.Module.TypeSystem.Void);
         h.Parameters.Add(new ParameterDefinition("whoAmI", ParameterAttributes.None, p.Module.TypeSystem.Int32));
         h.Body.InitLocals = true;
         var oldQuest = new VariableDefinition(p.Module.TypeSystem.Int32);
