@@ -9,11 +9,12 @@ namespace GLoader
         private static readonly object Gate = new object();
         private static StreamWriter _writer;
 
-        public static void Initialize(string logsDirectory)
+        public static void Initialize(string logsDirectory, string role)
         {
             Directory.CreateDirectory(logsDirectory);
 
-            var path = Path.Combine(logsDirectory, "gloader.log");
+            var safeRole = string.IsNullOrWhiteSpace(role) ? "process" : role.Trim().ToLowerInvariant();
+            var path = Path.Combine(logsDirectory, "gloader-" + safeRole + ".log");
             _writer = new StreamWriter(path, append: false, encoding: new UTF8Encoding(false))
             {
                 AutoFlush = true
