@@ -30,16 +30,32 @@ jobs:
         run: |
           dotnet restore gloader.sln
           dotnet restore tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj
+          dotnet restore tests/HostPlayFixture/Client.csproj
+          dotnet restore tests/HostPlayFixture/Server.csproj
 
       - name: Build
         shell: pwsh
         run: |
           dotnet build gloader.sln -c Release --no-restore
           dotnet build tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj -c Release --no-restore
+          dotnet build tests/HostPlayFixture/Client.csproj -c Release --no-restore
+          dotnet build tests/HostPlayFixture/Server.csproj -c Release --no-restore
 
       - name: Publish
         shell: pwsh
         run: ./build.ps1
+
+      - name: Host & Play integration test
+        shell: pwsh
+        run: |
+          $loader = (Resolve-Path "dist/gloader/gloader.exe").Path
+          $target = (Resolve-Path "tests/HostPlayFixture/bin/Release/net48/Terraria.exe").Path
+          $mods = (Resolve-Path "Mods").Path
+
+          & $loader --target $target --mods $mods
+          if ($LASTEXITCODE -ne 0) {
+            throw "Host & Play integration fixture failed with exit code $LASTEXITCODE"
+          }
 
       - name: Upload
         uses: actions/upload-artifact@v4
