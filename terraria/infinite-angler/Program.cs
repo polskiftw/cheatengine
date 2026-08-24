@@ -224,7 +224,7 @@ internal static class Program
             {
                 ReadSymbols = false,
                 InMemory = true,
-                ReadingMode = ReadingMode.Immediate,
+                ReadingMode = ReadingMode.Deferred,
                 AssemblyResolver = resolver
             });
         }
