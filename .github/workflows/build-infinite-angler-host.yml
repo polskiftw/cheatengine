@@ -39,36 +39,60 @@ jobs:
           -p:PublishTrimmed=false
           -o out/InfiniteAnglerHost
 
-      - name: Build synthetic host and vanilla guest fixture
+      - name: Build synthetic server and vanilla-client fixture
         run: >-
           dotnet build terraria/infinite-angler-host/test-fixture/SyntheticTerraria.csproj
           -c Release
           -o out/fixture
 
-      - name: Exercise host-only patch and restore
+      - name: Exercise real Host and Play file layout
         shell: pwsh
         run: |
-          $patcher = Resolve-Path 'out/InfiniteAnglerHost/InfiniteAnglerHost.exe'
-          $fixture = Resolve-Path 'out/fixture/SyntheticTerrariaHost.dll'
-          $before = (Get-FileHash $fixture -Algorithm SHA256).Hash
+          $patcher = (Resolve-Path 'out/InfiniteAnglerHost/InfiniteAnglerHost.exe').Path
+          New-Item -ItemType Directory -Force 'out/hostplay' | Out-Null
 
-          & $patcher --check --target $fixture
-          if ($LASTEXITCODE -ne 0) { throw 'Host compatibility check failed on synthetic fixture.' }
+          # Both filenames intentionally exist. Option A MUST choose TerrariaServer.exe.
+          Copy-Item 'out/fixture/SyntheticTerrariaHost.dll' 'out/hostplay/TerrariaServer.exe'
+          Copy-Item 'out/fixture/SyntheticTerrariaHost.dll' 'out/hostplay/Terraria.exe'
+          Copy-Item 'out/fixture/SyntheticTerrariaHost.runtimeconfig.json' 'out/hostplay/TerrariaServer.runtimeconfig.json'
+          Copy-Item 'out/fixture/SyntheticTerrariaHost.deps.json' 'out/hostplay/TerrariaServer.deps.json'
 
-          & $patcher --target $fixture
-          if ($LASTEXITCODE -ne 0) { throw 'Host patch install failed on synthetic fixture.' }
+          $server = (Resolve-Path 'out/hostplay/TerrariaServer.exe').Path
+          $client = (Resolve-Path 'out/hostplay/Terraria.exe').Path
+          $serverBefore = (Get-FileHash $server -Algorithm SHA256).Hash
+          $clientBefore = (Get-FileHash $client -Algorithm SHA256).Hash
 
-          & dotnet $fixture
-          if ($LASTEXITCODE -ne 0) { throw 'Patched host / vanilla guest behavior failed.' }
+          Push-Location 'out/hostplay'
+          try {
+            & $patcher --check
+            if ($LASTEXITCODE -ne 0) { throw 'Default compatibility check failed on TerrariaServer.exe.' }
 
-          & $patcher --check --target $fixture
-          if ($LASTEXITCODE -ne 0) { throw 'Post-patch host structural check failed.' }
+            & $patcher
+            if ($LASTEXITCODE -ne 0) { throw 'Host patch install failed.' }
 
-          & $patcher --restore --target $fixture
-          if ($LASTEXITCODE -ne 0) { throw 'Host patch restore failed on synthetic fixture.' }
+            $serverPatched = (Get-FileHash '.\TerrariaServer.exe' -Algorithm SHA256).Hash
+            $clientAfterInstall = (Get-FileHash '.\Terraria.exe' -Algorithm SHA256).Hash
+            if ($serverPatched -eq $serverBefore) { throw 'TerrariaServer.exe was not modified.' }
+            if ($clientAfterInstall -ne $clientBefore) { throw 'BUG: Terraria.exe client was modified by Option A.' }
 
-          $after = (Get-FileHash $fixture -Algorithm SHA256).Hash
-          if ($before -ne $after) { throw 'Host restore did not reproduce the original fixture byte-for-byte.' }
+            & dotnet '.\TerrariaServer.exe'
+            if ($LASTEXITCODE -ne 0) { throw 'Patched server / vanilla guest behavior failed.' }
+
+            & $patcher --check
+            if ($LASTEXITCODE -ne 0) { throw 'Post-patch structural check failed.' }
+
+            & $patcher --restore
+            if ($LASTEXITCODE -ne 0) { throw 'Host patch restore failed.' }
+
+            $serverAfter = (Get-FileHash '.\TerrariaServer.exe' -Algorithm SHA256).Hash
+            $clientAfter = (Get-FileHash '.\Terraria.exe' -Algorithm SHA256).Hash
+            if ($serverBefore -ne $serverAfter) { throw 'Server restore did not reproduce the original byte-for-byte.' }
+            if ($clientBefore -ne $clientAfter) { throw 'Terraria.exe client changed during host patch lifecycle.' }
+            if (Test-Path '.\InfiniteAnglerHost.manifest.json') { throw 'Manifest remained after successful restore.' }
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Package executable
         shell: pwsh
