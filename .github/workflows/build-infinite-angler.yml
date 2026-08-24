@@ -1,0 +1,54 @@
+name: Build Infinite Angler
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'terraria/infinite-angler/**'
+      - '.github/workflows/build-infinite-angler.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore terraria/infinite-angler/InfiniteAngler.csproj
+
+      - name: Publish single-file Windows executable
+        run: >-
+          dotnet publish terraria/infinite-angler/InfiniteAngler.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=false
+          -o out/InfiniteAngler
+
+      - name: Smoke test executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'out/InfiniteAngler/InfiniteAngler.exe')) {
+            throw 'InfiniteAngler.exe was not produced.'
+          }
+          $hash = (Get-FileHash 'out/InfiniteAngler/InfiniteAngler.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "SHA256=$hash" | Set-Content 'out/InfiniteAngler/SHA256.txt'
+          Copy-Item 'terraria/infinite-angler/README.md' 'out/InfiniteAngler/README.md'
+          Get-ChildItem 'out/InfiniteAngler'
+
+      - name: Upload drop-in package
+        uses: actions/upload-artifact@v4
+        with:
+          name: InfiniteAngler-win-x64
+          path: out/InfiniteAngler/
+          if-no-files-found: error
