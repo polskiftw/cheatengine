@@ -1,74 +1,75 @@
 using Terraria.Localization;
 
-namespace Terraria;
-
-public static class Main
+namespace Terraria
 {
-    public static int netMode = 2;
-    public static int anglerQuest = 7;
-    public static bool anglerQuestFinished;
-    public static List<string> anglerWhoFinishedToday = new();
-    public static Player[] player = Enumerable.Range(0, 8).Select(_ => new Player()).ToArray();
-
-    public static void AnglerQuestSwap()
+    public static class Main
     {
-        // Deterministic stand-in for vanilla's valid quest reroll.
-        anglerQuest = (anglerQuest + 1) % 40;
-    }
-}
+        public static int netMode = 2;
+        public static int anglerQuest = 7;
+        public static bool anglerQuestFinished;
+        public static List<string> anglerWhoFinishedToday = new();
+        public static Player[] player = Enumerable.Range(0, 8).Select(_ => new Player()).ToArray();
 
-public sealed class Player
-{
-    public string name = string.Empty;
-    public int anglerQuestsFinished;
-}
-
-public sealed class MessageBuffer
-{
-    public int whoAmI;
-
-    public void GetData(int start, int length, out int messageType)
-    {
-        messageType = 75;
-        if (Main.netMode != 2)
-            return;
-
-        string name = Main.player[whoAmI].name;
-        if (Main.anglerWhoFinishedToday.Contains(name))
-            return;
-
-        // This exact vanilla-shaped Add is where the host patch injects its completion hook.
-        Main.anglerWhoFinishedToday.Add(name);
-    }
-}
-
-public static class NetMessage
-{
-    public static int LastMessageType = -1;
-    public static int LastRemoteClient = -1;
-    public static int LastQuest = -1;
-    public static bool LastCompleted = true;
-
-    public static void SendData(
-        int msgType,
-        int remoteClient = -1,
-        int ignoreClient = -1,
-        NetworkText? text = null,
-        int number = 0,
-        float number2 = 0f,
-        float number3 = 0f,
-        float number4 = 0f,
-        int number5 = 0,
-        int number6 = 0,
-        int number7 = 0)
-    {
-        // Preserve the same structural dependencies as vanilla packet 74 serialization.
-        if (msgType == 74)
+        public static void AnglerQuestSwap()
         {
-            LastMessageType = msgType;
-            LastRemoteClient = remoteClient;
-            LastQuest = Main.anglerQuest;
-            LastCompleted = Main.anglerWhoFinishedToday.Contains(text!.ToString());
+            // Deterministic stand-in for vanilla's valid quest reroll.
+            anglerQuest = (anglerQuest + 1) % 40;
+        }
+    }
+
+    public sealed class Player
+    {
+        public string name = string.Empty;
+        public int anglerQuestsFinished;
+    }
+
+    public sealed class MessageBuffer
+    {
+        public int whoAmI;
+
+        public void GetData(int start, int length, out int messageType)
+        {
+            messageType = 75;
+            if (Main.netMode != 2)
+                return;
+
+            string name = Main.player[whoAmI].name;
+            if (Main.anglerWhoFinishedToday.Contains(name))
+                return;
+
+            // This exact vanilla-shaped Add is where the host patch injects its completion hook.
+            Main.anglerWhoFinishedToday.Add(name);
+        }
+    }
+
+    public static class NetMessage
+    {
+        public static int LastMessageType = -1;
+        public static int LastRemoteClient = -1;
+        public static int LastQuest = -1;
+        public static bool LastCompleted = true;
+
+        public static void SendData(
+            int msgType,
+            int remoteClient = -1,
+            int ignoreClient = -1,
+            NetworkText? text = null,
+            int number = 0,
+            float number2 = 0f,
+            float number3 = 0f,
+            float number4 = 0f,
+            int number5 = 0,
+            int number6 = 0,
+            int number7 = 0)
+        {
+            // Preserve the same structural dependencies as vanilla packet 74 serialization.
+            if (msgType == 74)
+            {
+                LastMessageType = msgType;
+                LastRemoteClient = remoteClient;
+                LastQuest = Main.anglerQuest;
+                LastCompleted = Main.anglerWhoFinishedToday.Contains(text!.ToString());
+            }
         }
     }
 }
