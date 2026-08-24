@@ -8,6 +8,9 @@
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Deterministic>true</Deterministic>
+    <BaseIntermediateOutputPath>obj\Server\</BaseIntermediateOutputPath>
+    <OutputPath>bin\$(Configuration)\net48\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
