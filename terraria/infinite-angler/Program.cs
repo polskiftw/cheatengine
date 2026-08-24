@@ -28,7 +28,10 @@ internal static class Program
         FieldDefinition NetMode,
         FieldDefinition AnglerQuestFinished,
         FieldDefinition AnglerWhoFinishedToday,
-        IReadOnlyList<Instruction> RewardCalls);
+        IReadOnlyList<Instruction> RewardCalls) : IDisposable
+    {
+        public void Dispose() => Assembly.Dispose();
+    }
 
     public static int Main(string[] args)
     {
@@ -58,7 +61,7 @@ internal static class Program
         {
             Console.Error.WriteLine();
             Console.Error.WriteLine("ERROR: " + ex.Message);
-            Console.Error.WriteLine("Nothing was intentionally changed after this failure.");
+            Console.Error.WriteLine("No intentional replacement of Terraria.exe was performed after this failure.");
             return 1;
         }
     }
@@ -89,13 +92,12 @@ internal static class Program
         EnsureTargetExists(target);
         using var plan = BuildPlan(target);
 
-        var version = plan.Assembly.Name.Version?.ToString() ?? "unknown";
-        var alreadyPatched = HasMarker(plan.Module);
-
-        Console.WriteLine($"Managed assembly version: {version}");
+        Console.WriteLine($"Managed assembly version: {AssemblyVersion(plan.Assembly)}");
         Console.WriteLine($"Angler turn-in method: {plan.TurnInMethod.FullName}");
         Console.WriteLine($"Reward call count: {plan.RewardCalls.Count}");
-        Console.WriteLine(alreadyPatched ? "Status: already patched." : "Status: compatible structural match found.");
+        Console.WriteLine(HasMarker(plan.Module)
+            ? "Status: already patched."
+            : "Status: compatible structural match found.");
         Console.WriteLine();
         Console.WriteLine("Compatibility is structural, not hard-locked to a Terraria version string.");
         return 0;
@@ -104,9 +106,9 @@ internal static class Program
     private static int Install(string target, string manifestPath)
     {
         EnsureTargetExists(target);
-
         using var plan = BuildPlan(target);
-        var version = plan.Assembly.Name.Version?.ToString() ?? "unknown";
+
+        var version = AssemblyVersion(plan.Assembly);
         Console.WriteLine($"Managed assembly version: {version}");
 
         if (HasMarker(plan.Module))
@@ -120,7 +122,8 @@ internal static class Program
         Console.WriteLine("Applying: no daily Angler lockout + local vanilla quest reroll after each reward.");
 
         var originalHash = Sha256(target);
-        var backupDir = Path.Combine(Path.GetDirectoryName(target)!, "InfiniteAngler-backups");
+        var root = Path.GetDirectoryName(target)!;
+        var backupDir = Path.Combine(root, "InfiniteAngler-backups");
         Directory.CreateDirectory(backupDir);
         var backupPath = Path.Combine(backupDir, $"Terraria.{originalHash[..12]}.original.exe");
         if (!File.Exists(backupPath))
@@ -133,11 +136,12 @@ internal static class Program
         {
             plan.Assembly.Write(tempPath, new WriterParameters { WriteSymbols = false });
 
-            // Re-open the produced assembly before touching Terraria.exe. This catches malformed IL/container output.
-            using (var verification = AssemblyDefinition.ReadAssembly(tempPath, new ReaderParameters { ReadSymbols = false, InMemory = true }))
+            // Make sure Cecil can read what it just emitted before replacing the game executable.
+            using (var verification = AssemblyDefinition.ReadAssembly(tempPath,
+                       new ReaderParameters { ReadSymbols = false, InMemory = true }))
             {
                 if (!HasMarker(verification.MainModule))
-                    throw new InvalidOperationException("Patched-file verification failed: marker missing.");
+                    throw new InvalidOperationException("Patched-file verification failed: patch marker missing.");
             }
 
             File.Move(tempPath, target, overwrite: true);
@@ -151,18 +155,19 @@ internal static class Program
         var patchedHash = Sha256(target);
         var manifest = new PatchManifest(
             Path.GetFileName(target),
-            Path.GetRelativePath(Path.GetDirectoryName(target)!, backupPath),
+            Path.GetRelativePath(root, backupPath),
             originalHash,
             patchedHash,
             version,
             DateTimeOffset.UtcNow);
-        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(manifestPath,
+            JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
 
         Console.WriteLine();
         Console.WriteLine("PATCHED.");
         Console.WriteLine($"Original backup: {backupPath}");
         Console.WriteLine("Launch Terraria normally through Steam.");
-        Console.WriteLine("Install the same patch on every PC that should have endless personal Angler quests.");
+        Console.WriteLine("Run the same patcher on every PC that should have endless personal Angler quests.");
         return 0;
     }
 
@@ -193,7 +198,6 @@ internal static class Program
 
         File.Copy(backupPath, target, overwrite: true);
         File.Delete(manifestPath);
-
         Console.WriteLine("RESTORED vanilla Terraria.exe from the matching backup.");
         return 0;
     }
@@ -213,7 +217,7 @@ internal static class Program
         catch (BadImageFormatException ex)
         {
             throw new InvalidOperationException(
-                "Terraria.exe is not a managed assembly Mono.Cecil can patch. This build needs a different loader strategy; no changes were made.", ex);
+                "Terraria.exe is not a managed assembly Mono.Cecil can patch. This Terraria build needs a different loader strategy; no changes were made.", ex);
         }
 
         try
@@ -227,7 +231,9 @@ internal static class Program
             var netMode = RequireField(main, "netMode");
             var finished = RequireField(main, "anglerQuestFinished");
             var finishedToday = RequireField(main, "anglerWhoFinishedToday");
-            var swap = main.Methods.SingleOrDefault(m => m.Name == "AnglerQuestSwap" && m.IsStatic && !m.HasParameters && m.ReturnType.MetadataType == MetadataType.Void)
+            var swap = main.Methods.SingleOrDefault(m =>
+                           m.Name == "AnglerQuestSwap" && m.IsStatic && !m.HasParameters &&
+                           m.ReturnType.MetadataType == MetadataType.Void)
                        ?? throw CompatibilityFailure("Main.AnglerQuestSwap() was not found with the expected signature.");
 
             var rewardMethods = player.Methods.Where(m => m.Name == "GetAnglerReward").ToArray();
@@ -244,7 +250,8 @@ internal static class Program
 
                 var rewardCalls = method.Body.Instructions
                     .Where(i => IsCall(i) && i.Operand is MethodReference mr &&
-                                mr.DeclaringType.FullName == player.FullName && mr.Name == "GetAnglerReward")
+                                mr.DeclaringType.FullName == player.FullName &&
+                                mr.Name == "GetAnglerReward")
                     .ToList();
                 if (rewardCalls.Count == 0)
                     continue;
@@ -253,7 +260,8 @@ internal static class Program
                 if (ReferencesField(method, finished)) score += 4;
                 if (ReferencesField(method, finishedToday)) score += 4;
                 if (ReferencesAnyFieldNamed(method, main, "anglerQuest")) score += 2;
-                if (rewardCalls.Any(i => i.Operand is MethodReference mr && rewardFullNames.Contains(mr.FullName))) score += 2;
+                if (rewardCalls.Any(i => i.Operand is MethodReference mr && rewardFullNames.Contains(mr.FullName)))
+                    score += 2;
                 candidates.Add((method, rewardCalls, score));
             }
 
@@ -264,15 +272,24 @@ internal static class Program
             var best = candidates.Where(c => c.Score == bestScore).ToArray();
             if (bestScore < 6 || best.Length != 1)
             {
-                var detail = string.Join("; ", candidates.OrderByDescending(c => c.Score)
-                    .Take(5).Select(c => $"{c.Method.FullName} [score {c.Score}]"));
-                throw CompatibilityFailure("The Angler turn-in method was not uniquely identifiable. Candidates: " + detail);
+                var detail = string.Join("; ", candidates
+                    .OrderByDescending(c => c.Score)
+                    .Take(5)
+                    .Select(c => $"{c.Method.FullName} [score {c.Score}]"));
+                throw CompatibilityFailure(
+                    "The Angler turn-in method was not uniquely identifiable. Candidates: " + detail);
             }
 
-            if (best[0].RewardCalls.Any(i => i.Operand is MethodReference mr && mr.ReturnType.MetadataType != MetadataType.Void))
-                throw CompatibilityFailure("GetAnglerReward no longer returns void; refusing to inject around an unfamiliar stack shape.");
+            if (best[0].RewardCalls.Any(i =>
+                    i.Operand is MethodReference mr && mr.ReturnType.MetadataType != MetadataType.Void))
+            {
+                throw CompatibilityFailure(
+                    "GetAnglerReward no longer returns void; refusing to inject around an unfamiliar stack shape.");
+            }
 
-            return new PatchPlan(assembly, module, main, best[0].Method, swap, netMode, finished, finishedToday, best[0].RewardCalls);
+            return new PatchPlan(
+                assembly, module, main, best[0].Method, swap, netMode, finished, finishedToday,
+                best[0].RewardCalls);
         }
         catch
         {
@@ -286,14 +303,16 @@ internal static class Program
         AddMarker(plan.Module);
         var helper = AddRerollHelper(plan);
 
-        // Every time the Angler interaction code runs locally, make the local cooldown cache eligible again.
-        // In multiplayer this does not edit the server's world state or the other player's client.
         var body = plan.TurnInMethod.Body;
-        body.SimplifyMacrosSafe();
         var il = body.GetILProcessor();
         var first = body.Instructions.First();
 
-        var clearMethod = new MethodReference("Clear", plan.Module.TypeSystem.Void, plan.Module.ImportReference(plan.AnglerWhoFinishedToday.FieldType))
+        // Clear only this process's cached completion state whenever the Angler turn-in UI runs.
+        // A multiplayer server may still remember packet 75; the client no longer treats that as a cooldown.
+        var clearMethod = new MethodReference(
+            "Clear",
+            plan.Module.TypeSystem.Void,
+            plan.Module.ImportReference(plan.AnglerWhoFinishedToday.FieldType))
         {
             HasThis = true
         };
@@ -303,11 +322,10 @@ internal static class Program
         il.InsertBefore(first, il.Create(OpCodes.Ldsfld, plan.AnglerWhoFinishedToday));
         il.InsertBefore(first, il.Create(OpCodes.Callvirt, clearMethod));
 
-        // A reward call only happens on a successful turn-in, so this makes the next quest appear only after payment.
+        // GetAnglerReward is reached only after a successful fish turn-in. Immediately roll the next
+        // quest locally using Terraria's own AnglerQuestSwap implementation.
         foreach (var rewardCall in plan.RewardCalls.ToArray())
             il.InsertAfter(rewardCall, il.Create(OpCodes.Call, helper));
-
-        AddAssemblyMetadata(plan.Module, "InfiniteAngler.StructuralPatch", "1");
     }
 
     private static MethodDefinition AddRerollHelper(PatchPlan plan)
@@ -322,20 +340,21 @@ internal static class Program
         helper.Body.Variables.Add(oldMode);
         var il = helper.Body.GetILProcessor();
 
-        var callSwap = il.Create(OpCodes.Call, plan.AnglerQuestSwap);
-        var restoreCheck = il.Create(OpCodes.Nop);
+        var callSwapLabel = il.Create(OpCodes.Nop);
         var ret = il.Create(OpCodes.Ret);
 
+        // Vanilla AnglerQuestSwap deliberately returns immediately on a multiplayer client (netMode == 1).
+        // Temporarily present this one synchronous local call as single-player, then restore netMode.
+        // This changes only the local client's quest/cache; it does not roll the host/server's quest.
         il.Append(il.Create(OpCodes.Ldsfld, plan.NetMode));
         il.Append(il.Create(OpCodes.Stloc, oldMode));
         il.Append(il.Create(OpCodes.Ldloc, oldMode));
         il.Append(il.Create(OpCodes.Ldc_I4_1));
-        il.Append(il.Create(OpCodes.Bne_Un, callSwap));
+        il.Append(il.Create(OpCodes.Bne_Un, callSwapLabel));
         il.Append(il.Create(OpCodes.Ldc_I4_0));
         il.Append(il.Create(OpCodes.Stsfld, plan.NetMode));
-        il.Append(callSwap);
+        il.Append(callSwapLabel);
         il.Append(il.Create(OpCodes.Call, plan.AnglerQuestSwap));
-        il.Append(restoreCheck);
         il.Append(il.Create(OpCodes.Ldloc, oldMode));
         il.Append(il.Create(OpCodes.Ldc_I4_1));
         il.Append(il.Create(OpCodes.Bne_Un, ret));
@@ -352,34 +371,24 @@ internal static class Program
         if (HasMarker(module))
             return;
 
-        var marker = new TypeDefinition(
+        module.Types.Add(new TypeDefinition(
             "InfiniteAngler",
             MarkerTypeName,
             TypeAttributes.Class | TypeAttributes.NotPublic | TypeAttributes.Abstract | TypeAttributes.Sealed,
-            module.TypeSystem.Object);
-        module.Types.Add(marker);
+            module.TypeSystem.Object));
     }
 
     private static bool HasMarker(ModuleDefinition module) =>
         FindType(module, $"InfiniteAngler.{MarkerTypeName}") is not null;
 
-    private static void AddAssemblyMetadata(ModuleDefinition module, string key, string value)
-    {
-        var attrType = module.ImportReference(typeof(System.Reflection.AssemblyMetadataAttribute));
-        var ctor = new MethodReference(".ctor", module.TypeSystem.Void, attrType) { HasThis = true };
-        ctor.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
-        ctor.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
-        var attribute = new CustomAttribute(ctor);
-        attribute.ConstructorArguments.Add(new CustomAttributeArgument(module.TypeSystem.String, key));
-        attribute.ConstructorArguments.Add(new CustomAttributeArgument(module.TypeSystem.String, value));
-        module.Assembly.CustomAttributes.Add(attribute);
-    }
-
     private static bool ReferencesField(MethodDefinition method, FieldDefinition field) =>
-        method.Body.Instructions.Any(i => i.Operand is FieldReference fr && fr.FullName == field.FullName);
+        method.Body.Instructions.Any(i =>
+            i.Operand is FieldReference fr && fr.FullName == field.FullName);
 
     private static bool ReferencesAnyFieldNamed(MethodDefinition method, TypeDefinition type, string name) =>
-        method.Body.Instructions.Any(i => i.Operand is FieldReference fr && fr.DeclaringType.FullName == type.FullName && fr.Name == name);
+        method.Body.Instructions.Any(i =>
+            i.Operand is FieldReference fr &&
+            fr.DeclaringType.FullName == type.FullName && fr.Name == name);
 
     private static bool IsCall(Instruction instruction) =>
         instruction.OpCode.Code is Code.Call or Code.Callvirt;
@@ -394,10 +403,8 @@ internal static class Program
     private static IEnumerable<TypeDefinition> AllTypes(ModuleDefinition module)
     {
         foreach (var type in module.Types)
-        {
-            foreach (var nested in SelfAndNested(type))
-                yield return nested;
-        }
+        foreach (var descendant in SelfAndNested(type))
+            yield return descendant;
     }
 
     private static IEnumerable<TypeDefinition> SelfAndNested(TypeDefinition type)
@@ -410,7 +417,8 @@ internal static class Program
 
     private static InvalidOperationException CompatibilityFailure(string reason) =>
         new("Terraria compatibility safety check failed: " + reason +
-            " This is intentionally based on code structure rather than an exact version number, so an unknown update is refused only when the Angler code actually changed.");
+            " The check is intentionally based on code structure rather than an exact game-version string, " +
+            "so compatible point releases are allowed and unfamiliar Angler code is refused.");
 
     private static void EnsureTargetExists(string target)
     {
@@ -418,16 +426,12 @@ internal static class Program
             throw new FileNotFoundException("Target Terraria executable not found: " + target);
     }
 
+    private static string AssemblyVersion(AssemblyDefinition assembly) =>
+        assembly.Name.Version?.ToString() ?? "unknown";
+
     private static string Sha256(string path)
     {
         using var stream = File.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
-    }
-
-    // Mono.Cecil.Rocks is intentionally not required just for macro normalization.
-    private static void SimplifyMacrosSafe(this MethodBody body)
-    {
-        // We only insert instructions without retargeting/removing existing branches, so preserving the original
-        // macro forms is safe. This extension exists to make that design decision explicit at the patch site.
     }
 }
