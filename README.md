@@ -15,14 +15,14 @@ The workflow uploads a `CheatEngine75-clean-x64` artifact containing the freshly
 
 This repo contains two old-school drop-in patchers for vanilla Terraria:
 
-- **Option A — `terraria/infinite-angler-host` / InfiniteAnglerHost**: patch only the **Host & Play PC**. Any vanilla player connected to that host can keep taking Angler quests with no daily cooldown. Guests install nothing.
-- **Option B — `terraria/infinite-angler` / InfiniteAngler**: patch each individual PC. That player gets endless personal Angler quests regardless of who hosts.
+- **Option A — `terraria/infinite-angler-host` / InfiniteAnglerHost**: patch only the host PC's **`TerrariaServer.exe`**. Vanilla players connected through Host & Play can keep taking Angler quests; guests install nothing.
+- **Option B — `terraria/infinite-angler` / InfiniteAngler**: patch an individual player's **`Terraria.exe`**. That player gets endless personal Angler quests regardless of who hosts.
 
 Both use Terraria **1.4.5.8** as the initial reference target but are deliberately **not hard-locked to a version string**. They validate the live methods/fields they modify and refuse unfamiliar structures instead of guessing.
 
-Option A uses only vanilla multiplayer semantics: after the server receives the normal Angler completion packet, it clears that player's completion name, asks vanilla quest selection for a new quest with broadcasting suppressed, sends ordinary Angler packet 74 only to that player, then restores the host's shared quest state.
+Option A uses only vanilla multiplayer semantics. After the server receives a normal Angler completion, it removes that player's completion name, temporarily borrows vanilla quest selection with broadcasting suppressed, sends the target assembly's own `MessageID.AnglerQuest` packet only to that player, then restores the server's shared Angler state.
 
-Do not stack Option A and Option B into the same `Terraria.exe`; restore one before installing the other.
+Option A and Option B normally modify different executables and should be treated as separate mechanisms.
 
 ## Why
 
@@ -39,7 +39,7 @@ Infinite Angler artifacts include `SHA256.txt` for their self-contained patcher 
 Use GitHub Actions:
 
 - **Build clean Cheat Engine 7.5** for the CE artifact.
-- **Build Infinite Angler Host** for Option A (host-only).
-- **Build Infinite Angler** for Option B (per-PC).
+- **Build Infinite Angler Host** for Option A (host-only server patch).
+- **Build Infinite Angler** for Option B (per-PC client patch).
 
 No installer is produced or executed for Cheat Engine itself. The only installers used by CE CI are the official Lazarus/FPC compiler installers referenced by Cheat Engine's own build documentation.

@@ -8,207 +8,445 @@ namespace InfiniteAnglerHost;
 
 internal static class Program
 {
-    const string Marker = "InfiniteAnglerHost.__InfiniteAnglerHostPatchMarker";
-    const string PersonalMarker = "InfiniteAngler.__InfiniteAnglerPatchMarker";
-    const string ManifestName = "InfiniteAnglerHost.manifest.json";
+    private const string Marker = "InfiniteAnglerHost.__InfiniteAnglerHostPatchMarker";
+    private const string PersonalMarker = "InfiniteAngler.__InfiniteAnglerPatchMarker";
+    private const string ManifestName = "InfiniteAnglerHost.manifest.json";
 
-    sealed record Manifest(string TargetFile, string BackupFile, string OriginalSha256, string PatchedSha256, string AssemblyVersion, DateTimeOffset PatchedAtUtc);
+    private sealed record Manifest(
+        string TargetFile,
+        string BackupFile,
+        string OriginalSha256,
+        string PatchedSha256,
+        string AssemblyVersion,
+        DateTimeOffset PatchedAtUtc);
 
-    sealed record Plan(
-        AssemblyDefinition Assembly, ModuleDefinition Module, TypeDefinition MainType,
-        MethodDefinition CompletionHandler, Instruction AddCall, MethodDefinition Swap,
-        MethodDefinition SendData, MethodDefinition FromLiteral,
-        FieldDefinition NetMode, FieldDefinition AnglerQuest, FieldDefinition FinishedToday,
-        FieldDefinition PlayerArray, FieldDefinition PlayerName, FieldDefinition WhoAmI,
+    private sealed record Plan(
+        AssemblyDefinition Assembly,
+        ModuleDefinition Module,
+        TypeDefinition MainType,
+        MethodDefinition CompletionHandler,
+        Instruction CompletionAddCall,
+        MethodDefinition AnglerQuestSwap,
+        MethodDefinition SendData,
+        MethodDefinition FromLiteral,
+        FieldDefinition NetMode,
+        FieldDefinition AnglerQuest,
+        FieldDefinition AnglerQuestFinished,
+        FieldDefinition FinishedToday,
+        FieldDefinition PlayerArray,
+        FieldDefinition PlayerName,
+        FieldDefinition WhoAmI,
+        int AnglerQuestMessageId,
+        int AnglerQuestFinishedMessageId,
+        int QuestsCountSyncMessageId,
         DefaultAssemblyResolver Resolver) : IDisposable
     {
-        public void Dispose() { Assembly.Dispose(); Resolver.Dispose(); }
+        public void Dispose()
+        {
+            Assembly.Dispose();
+            Resolver.Dispose();
+        }
     }
 
-    static int Main(string[] args)
+    public static int Main(string[] args)
     {
         try
         {
-            string command = args.Any(x => x.Equals("--restore", StringComparison.OrdinalIgnoreCase)) ? "restore" :
-                             args.Any(x => x.Equals("--check", StringComparison.OrdinalIgnoreCase)) ? "check" : "install";
+            string command = args.Any(x => x.Equals("--restore", StringComparison.OrdinalIgnoreCase))
+                ? "restore"
+                : args.Any(x => x.Equals("--check", StringComparison.OrdinalIgnoreCase))
+                    ? "check"
+                    : "install";
+
             string target = ResolveTarget(args);
-            string manifest = Path.Combine(Path.GetDirectoryName(target)!, ManifestName);
+            string manifestPath = Path.Combine(Path.GetDirectoryName(target)!, ManifestName);
+
             Console.WriteLine("Infinite Angler Host - Option A (host only)");
+            Console.WriteLine("------------------------------------------------");
             Console.WriteLine($"Target: {target}");
-            return command switch { "restore" => Restore(target, manifest), "check" => Check(target), _ => Install(target, manifest) };
+
+            return command switch
+            {
+                "restore" => Restore(target, manifestPath),
+                "check" => Check(target),
+                _ => Install(target, manifestPath)
+            };
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine();
             Console.Error.WriteLine("ERROR: " + ex.Message);
-            if (Environment.GetEnvironmentVariable("CI") is not null) Console.Error.WriteLine(ex);
-            Console.Error.WriteLine("No intentional replacement of Terraria.exe was performed after this failure.");
+            if (Environment.GetEnvironmentVariable("CI") is not null)
+                Console.Error.WriteLine(ex);
+            Console.Error.WriteLine("No intentional replacement of the target executable was performed after this failure.");
             return 1;
         }
     }
 
-    static string ResolveTarget(string[] args)
+    private static string ResolveTarget(string[] args)
     {
         for (int i = 0; i < args.Length - 1; i++)
-            if (args[i].Equals("--target", StringComparison.OrdinalIgnoreCase)) return Path.GetFullPath(args[i + 1]);
-        foreach (var p in new[] { Path.Combine(Environment.CurrentDirectory, "Terraria.exe"), Path.Combine(AppContext.BaseDirectory, "Terraria.exe") })
-            if (File.Exists(p)) return Path.GetFullPath(p);
-        throw new FileNotFoundException("Put InfiniteAnglerHost.exe beside Terraria.exe, or use --target \"C:\\...\\Terraria.exe\".");
+        {
+            if (args[i].Equals("--target", StringComparison.OrdinalIgnoreCase))
+                return Path.GetFullPath(args[i + 1]);
+        }
+
+        string cwdServer = Path.Combine(Environment.CurrentDirectory, "TerrariaServer.exe");
+        if (File.Exists(cwdServer))
+            return Path.GetFullPath(cwdServer);
+
+        string besideServer = Path.Combine(AppContext.BaseDirectory, "TerrariaServer.exe");
+        if (File.Exists(besideServer))
+            return Path.GetFullPath(besideServer);
+
+        bool clientPresent = File.Exists(Path.Combine(Environment.CurrentDirectory, "Terraria.exe")) ||
+                             File.Exists(Path.Combine(AppContext.BaseDirectory, "Terraria.exe"));
+        if (clientPresent)
+        {
+            throw new FileNotFoundException(
+                "Terraria.exe was found, but Option A patches the Host & Play server executable, TerrariaServer.exe. " +
+                "Put InfiniteAnglerHost.exe in the Terraria install folder containing TerrariaServer.exe, " +
+                "or use --target \"C:\\...\\TerrariaServer.exe\".");
+        }
+
+        throw new FileNotFoundException(
+            "TerrariaServer.exe was not found. Put InfiniteAnglerHost.exe in the Terraria install folder, " +
+            "or use --target \"C:\\...\\TerrariaServer.exe\".");
     }
 
-    static int Check(string target)
+    private static int Check(string target)
     {
         EnsureTarget(target);
         using var p = BuildPlan(target);
+
         Console.WriteLine($"Assembly: {p.Assembly.Name.Version}");
         Console.WriteLine($"Completion handler: {p.CompletionHandler.FullName}");
         Console.WriteLine($"Packet sender: {p.SendData.FullName}");
-        Console.WriteLine(HasType(p.Module, Marker) ? "Status: already patched." : "Status: compatible host-side structural match found.");
-        Console.WriteLine("Compatibility is structural; it is not hard-locked to 1.4.5.8.");
+        Console.WriteLine($"Message IDs: quest={p.AnglerQuestMessageId}, finished={p.AnglerQuestFinishedMessageId}, count={p.QuestsCountSyncMessageId}");
+        Console.WriteLine(HasType(p.Module, Marker)
+            ? "Status: host patch already installed."
+            : "Status: compatible server-side structural match found.");
+        Console.WriteLine("Compatibility is structural; it is not hard-locked to a Terraria version string or packet number.");
         return 0;
     }
 
-    static int Install(string target, string manifestPath)
+    private static int Install(string target, string manifestPath)
     {
         EnsureTarget(target);
         using var p = BuildPlan(target);
+
         if (HasType(p.Module, PersonalMarker))
-            throw new InvalidOperationException("Option B is installed in this Terraria.exe. Restore Option B before installing Option A.");
-        if (HasType(p.Module, Marker)) { Console.WriteLine("Already patched."); return 0; }
+        {
+            throw new InvalidOperationException(
+                "The personal/Option B marker is present in this target. Refusing to stack the two patch styles into one assembly.");
+        }
+
+        if (HasType(p.Module, Marker))
+        {
+            Console.WriteLine("Host patch is already installed. No changes made.");
+            return 0;
+        }
 
         string root = Path.GetDirectoryName(target)!;
         string originalHash = Hash(target);
         string backupDir = Path.Combine(root, "InfiniteAnglerHost-backups");
         Directory.CreateDirectory(backupDir);
-        string backup = Path.Combine(backupDir, $"Terraria.{originalHash[..12]}.original.exe");
-        if (!File.Exists(backup)) File.Copy(target, backup);
+
+        string targetStem = Path.GetFileNameWithoutExtension(target);
+        string targetExt = Path.GetExtension(target);
+        string backup = Path.Combine(backupDir, $"{targetStem}.{originalHash[..12]}.original{targetExt}");
+        if (!File.Exists(backup))
+            File.Copy(target, backup, overwrite: false);
 
         Apply(p);
+
         string tmp = target + ".InfiniteAnglerHost.tmp";
         try
         {
             p.Assembly.Write(tmp, new WriterParameters { WriteSymbols = false });
-            using (var verify = AssemblyDefinition.ReadAssembly(tmp, new ReaderParameters { InMemory = true, ReadingMode = ReadingMode.Deferred, AssemblyResolver = p.Resolver }))
-                if (!HasType(verify.MainModule, Marker)) throw new InvalidOperationException("Patched-file verification failed.");
-            File.Move(tmp, target, true);
+            using (var verify = AssemblyDefinition.ReadAssembly(tmp, new ReaderParameters
+                   {
+                       InMemory = true,
+                       ReadingMode = ReadingMode.Deferred,
+                       AssemblyResolver = p.Resolver
+                   }))
+            {
+                if (!HasType(verify.MainModule, Marker))
+                    throw new InvalidOperationException("Patched-file verification failed: host patch marker missing.");
+            }
+
+            File.Move(tmp, target, overwrite: true);
         }
-        finally { if (File.Exists(tmp)) File.Delete(tmp); }
+        finally
+        {
+            if (File.Exists(tmp))
+                File.Delete(tmp);
+        }
 
         string patchedHash = Hash(target);
-        var m = new Manifest(Path.GetFileName(target), Path.GetRelativePath(root, backup), originalHash, patchedHash,
-            p.Assembly.Name.Version?.ToString() ?? "unknown", DateTimeOffset.UtcNow);
-        File.WriteAllText(manifestPath, JsonSerializer.Serialize(m, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine("PATCHED. Only the Host & Play PC needs this. Guests remain vanilla.");
-        Console.WriteLine($"Backup: {backup}");
+        var manifest = new Manifest(
+            Path.GetFileName(target),
+            Path.GetRelativePath(root, backup),
+            originalHash,
+            patchedHash,
+            p.Assembly.Name.Version?.ToString() ?? "unknown",
+            DateTimeOffset.UtcNow);
+
+        File.WriteAllText(manifestPath,
+            JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+
+        Console.WriteLine();
+        Console.WriteLine("PATCHED.");
+        Console.WriteLine($"Original backup: {backup}");
+        Console.WriteLine("Only the Host & Play PC needs this patch. Joining clients stay completely vanilla.");
+        Console.WriteLine("Launch Terraria.exe normally through Steam and use Multiplayer -> Host & Play.");
         return 0;
     }
 
-    static int Restore(string target, string manifestPath)
+    private static int Restore(string target, string manifestPath)
     {
         EnsureTarget(target);
-        if (!File.Exists(manifestPath)) throw new FileNotFoundException("InfiniteAnglerHost.manifest.json was not found.");
-        var m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(manifestPath)) ?? throw new InvalidDataException("Manifest is unreadable.");
-        if (!Hash(target).Equals(m.PatchedSha256, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Terraria.exe changed after patching; refusing to overwrite it with an older backup.");
+        if (!File.Exists(manifestPath))
+            throw new FileNotFoundException("InfiniteAnglerHost.manifest.json was not found beside the server executable.");
+
+        var manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(manifestPath))
+                       ?? throw new InvalidDataException("The Infinite Angler Host manifest could not be read.");
+
+        if (!Path.GetFileName(target).Equals(manifest.TargetFile, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The manifest belongs to a different target executable. Refusing to restore it here.");
+
+        if (!Hash(target).Equals(manifest.PatchedSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "The server executable no longer matches the file Infinite Angler Host patched. Steam may have updated it. " +
+                "Refusing to restore an older executable over a newer game version.");
+        }
+
         string root = Path.GetDirectoryName(target)!;
-        string backup = Path.GetFullPath(Path.Combine(root, m.BackupFile));
-        if (!File.Exists(backup) || !Hash(backup).Equals(m.OriginalSha256, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Matching original backup is missing or has the wrong hash.");
-        File.Copy(backup, target, true);
+        string backup = Path.GetFullPath(Path.Combine(root, manifest.BackupFile));
+        if (!File.Exists(backup))
+            throw new FileNotFoundException("The matching original backup is missing: " + backup);
+        if (!Hash(backup).Equals(manifest.OriginalSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The original backup hash does not match the manifest.");
+
+        File.Copy(backup, target, overwrite: true);
         File.Delete(manifestPath);
-        Console.WriteLine("RESTORED vanilla Terraria.exe.");
+        Console.WriteLine($"RESTORED vanilla {Path.GetFileName(target)} from the matching backup.");
         return 0;
     }
 
-    static Plan BuildPlan(string target)
+    private static Plan BuildPlan(string target)
     {
         var resolver = Resolver(target);
         AssemblyDefinition asm;
-        try { asm = AssemblyDefinition.ReadAssembly(target, new ReaderParameters { InMemory = true, ReadingMode = ReadingMode.Deferred, AssemblyResolver = resolver }); }
-        catch { resolver.Dispose(); throw; }
+        try
+        {
+            asm = AssemblyDefinition.ReadAssembly(target, new ReaderParameters
+            {
+                InMemory = true,
+                ReadingMode = ReadingMode.Deferred,
+                AssemblyResolver = resolver
+            });
+        }
+        catch (BadImageFormatException ex)
+        {
+            resolver.Dispose();
+            throw new InvalidOperationException(
+                "The target is not a managed Terraria server assembly Mono.Cecil can patch. No changes were made.", ex);
+        }
+        catch
+        {
+            resolver.Dispose();
+            throw;
+        }
+
         try
         {
             var mod = asm.MainModule;
             var main = Type(mod, "Terraria.Main") ?? Fail<TypeDefinition>("Terraria.Main missing");
-            var mb = Type(mod, "Terraria.MessageBuffer") ?? Fail<TypeDefinition>("Terraria.MessageBuffer missing");
+            var messageBuffer = Type(mod, "Terraria.MessageBuffer") ?? Fail<TypeDefinition>("Terraria.MessageBuffer missing");
             var player = Type(mod, "Terraria.Player") ?? Fail<TypeDefinition>("Terraria.Player missing");
-            var net = Type(mod, "Terraria.NetMessage") ?? Fail<TypeDefinition>("Terraria.NetMessage missing");
-            var nt = Type(mod, "Terraria.Localization.NetworkText") ?? Fail<TypeDefinition>("NetworkText missing");
+            var netMessage = Type(mod, "Terraria.NetMessage") ?? Fail<TypeDefinition>("Terraria.NetMessage missing");
+            var networkText = Type(mod, "Terraria.Localization.NetworkText") ?? Fail<TypeDefinition>("Terraria.Localization.NetworkText missing");
+            var messageId = Type(mod, "Terraria.ID.MessageID") ?? Fail<TypeDefinition>("Terraria.ID.MessageID missing");
 
             var netMode = Field(main, "netMode");
             var quest = Field(main, "anglerQuest");
-            var finished = Field(main, "anglerWhoFinishedToday");
+            var questFinished = Field(main, "anglerQuestFinished");
+            var finishedToday = Field(main, "anglerWhoFinishedToday");
             var players = Field(main, "player");
-            var pname = Field(player, "name");
-            var who = Field(mb, "whoAmI");
-            if (netMode.FieldType.MetadataType != MetadataType.Int32 || quest.FieldType.MetadataType != MetadataType.Int32 ||
-                who.FieldType.MetadataType != MetadataType.Int32 || pname.FieldType.MetadataType != MetadataType.String)
-                Fail<object>("core Angler/network field types changed");
+            var playerName = Field(player, "name");
+            var whoAmI = Field(messageBuffer, "whoAmI");
 
-            var swap = main.Methods.SingleOrDefault(x => x.Name == "AnglerQuestSwap" && x.IsStatic && !x.HasParameters && x.ReturnType.MetadataType == MetadataType.Void)
+            if (netMode.FieldType.MetadataType != MetadataType.Int32 ||
+                quest.FieldType.MetadataType != MetadataType.Int32 ||
+                questFinished.FieldType.MetadataType != MetadataType.Boolean ||
+                whoAmI.FieldType.MetadataType != MetadataType.Int32 ||
+                playerName.FieldType.MetadataType != MetadataType.String)
+            {
+                Fail<object>("core Angler/network field types changed");
+            }
+
+            int questMessageId = MessageId(messageId, "AnglerQuest");
+            int finishedMessageId = MessageId(messageId, "AnglerQuestFinished");
+            int countMessageId = MessageId(messageId, "QuestsCountSync");
+            if (questMessageId == finishedMessageId || questMessageId == countMessageId || finishedMessageId == countMessageId)
+                Fail<object>("Angler message IDs are no longer distinct");
+
+            var swap = main.Methods.SingleOrDefault(x =>
+                           x.Name == "AnglerQuestSwap" && x.IsStatic && !x.HasParameters &&
+                           x.ReturnType.MetadataType == MetadataType.Void)
                        ?? Fail<MethodDefinition>("Main.AnglerQuestSwap() missing");
-            var fromLiteral = nt.Methods.SingleOrDefault(x => x.Name == "FromLiteral" && x.IsStatic && x.Parameters.Count == 1 &&
-                                                         x.Parameters[0].ParameterType.MetadataType == MetadataType.String && x.ReturnType.FullName == nt.FullName)
+
+            if (Refs(swap, finishedToday))
+            {
+                Fail<object>(
+                    "Main.AnglerQuestSwap() now directly touches anglerWhoFinishedToday; refusing to use it as a private reroll scratch operation");
+            }
+
+            var allowedSwapStores = new HashSet<string>(StringComparer.Ordinal)
+            {
+                quest.FullName,
+                questFinished.FullName
+            };
+            var unexpectedStores = swap.Body.Instructions
+                .Where(i => i.OpCode.Code == Code.Stsfld && i.Operand is FieldReference)
+                .Select(i => (FieldReference)i.Operand)
+                .Where(f => f.DeclaringType.FullName == main.FullName && !allowedSwapStores.Contains(f.FullName))
+                .Select(f => f.FullName)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (unexpectedStores.Length != 0)
+            {
+                Fail<object>(
+                    "Main.AnglerQuestSwap() now writes additional Main state: " + string.Join(", ", unexpectedStores));
+            }
+
+            var fromLiteral = networkText.Methods.SingleOrDefault(x =>
+                                  x.Name == "FromLiteral" && x.IsStatic && x.Parameters.Count == 1 &&
+                                  x.Parameters[0].ParameterType.MetadataType == MetadataType.String &&
+                                  x.ReturnType.FullName == networkText.FullName)
                               ?? Fail<MethodDefinition>("NetworkText.FromLiteral(string) missing");
-            var sends = net.Methods.Where(x => x.Name == "SendData" && x.IsStatic && x.ReturnType.MetadataType == MetadataType.Void &&
-                                               x.Parameters.Count >= 4 && x.Parameters[0].ParameterType.MetadataType == MetadataType.Int32 &&
-                                               x.Parameters[1].ParameterType.MetadataType == MetadataType.Int32 && x.Parameters[2].ParameterType.MetadataType == MetadataType.Int32 &&
-                                               x.Parameters[3].ParameterType.FullName == nt.FullName).ToArray();
-            if (sends.Length != 1) Fail<object>($"expected one NetMessage.SendData overload, found {sends.Length}");
-            var send = sends[0];
-            if (!Refs(send, quest) || !Refs(send, finished)) Fail<object>("packet serializer no longer references Angler quest + completion list");
-            for (int i = 4; i < send.Parameters.Count; i++)
-                if (send.Parameters[i].ParameterType.MetadataType is not (MetadataType.Int32 or MetadataType.Single))
-                    Fail<object>($"unsupported SendData parameter type {send.Parameters[i].ParameterType.FullName}");
+
+            var sends = netMessage.Methods.Where(x =>
+                    x.Name == "SendData" && x.IsStatic && x.ReturnType.MetadataType == MetadataType.Void &&
+                    x.Parameters.Count >= 4 &&
+                    x.Parameters[0].ParameterType.MetadataType == MetadataType.Int32 &&
+                    x.Parameters[1].ParameterType.MetadataType == MetadataType.Int32 &&
+                    x.Parameters[2].ParameterType.MetadataType == MetadataType.Int32 &&
+                    x.Parameters[3].ParameterType.FullName == networkText.FullName)
+                .ToArray();
+            if (sends.Length != 1)
+                Fail<object>($"expected one vanilla NetMessage.SendData overload, found {sends.Length}");
+            var sendData = sends[0];
+
+            if (!Refs(sendData, quest) || !Refs(sendData, finishedToday))
+            {
+                Fail<object>(
+                    "NetMessage.SendData no longer contains the expected Angler quest + per-name completion serialization dependencies");
+            }
+
+            for (int i = 4; i < sendData.Parameters.Count; i++)
+            {
+                if (sendData.Parameters[i].ParameterType.MetadataType is not (MetadataType.Int32 or MetadataType.Single))
+                    Fail<object>($"unsupported SendData parameter type {sendData.Parameters[i].ParameterType.FullName}");
+            }
 
             var candidates = new List<(MethodDefinition Method, Instruction Add, int Score)>();
-            foreach (var method in mb.Methods.Where(x => x.HasBody))
+            foreach (var method in messageBuffer.Methods.Where(x => x.HasBody))
             {
-                var ins = method.Body.Instructions;
-                for (int i = 0; i < ins.Count; i++)
+                var instructions = method.Body.Instructions;
+                for (int i = 0; i < instructions.Count; i++)
                 {
-                    if (!IsListAdd(ins[i]) || !Nearby(ins, i, finished, 10)) continue;
-                    int score = (Refs(method, netMode) ? 2 : 0) + (Refs(method, who) ? 4 : 0) +
-                                (Refs(method, players) ? 2 : 0) + (Refs(method, pname) ? 2 : 0);
-                    candidates.Add((method, ins[i], score));
+                    if (!IsListAdd(instructions[i]) || !Nearby(instructions, i, finishedToday, 10))
+                        continue;
+
+                    int score = 0;
+                    if (Refs(method, netMode)) score += 2;
+                    if (Refs(method, whoAmI)) score += 4;
+                    if (Refs(method, players)) score += 2;
+                    if (Refs(method, playerName)) score += 2;
+                    if (ContainsIntegerConstant(method, finishedMessageId)) score += 2;
+                    candidates.Add((method, instructions[i], score));
                 }
             }
-            if (candidates.Count == 0) Fail<object>("server Angler completion-name Add path not found");
+
+            if (candidates.Count == 0)
+                Fail<object>("server Angler completion-name Add path not found");
+
             int bestScore = candidates.Max(x => x.Score);
             var best = candidates.Where(x => x.Score == bestScore).ToArray();
-            if (bestScore < 6 || best.Length != 1) Fail<object>("server Angler completion path was not uniquely identifiable");
+            if (bestScore < 6 || best.Length != 1)
+            {
+                string detail = string.Join("; ", candidates.Select(x => $"{x.Method.FullName} [score {x.Score}]"));
+                Fail<object>("server Angler completion path was not uniquely identifiable: " + detail);
+            }
 
-            return new Plan(asm, mod, main, best[0].Method, best[0].Add, swap, send, fromLiteral,
-                netMode, quest, finished, players, pname, who, resolver);
+            return new Plan(
+                asm, mod, main,
+                best[0].Method, best[0].Add,
+                swap, sendData, fromLiteral,
+                netMode, quest, questFinished, finishedToday,
+                players, playerName, whoAmI,
+                questMessageId, finishedMessageId, countMessageId,
+                resolver);
         }
-        catch { asm.Dispose(); resolver.Dispose(); throw; }
+        catch
+        {
+            asm.Dispose();
+            resolver.Dispose();
+            throw;
+        }
     }
 
-    static void Apply(Plan p)
+    private static void Apply(Plan p)
     {
-        p.Module.Types.Add(new TypeDefinition("InfiniteAnglerHost", "__InfiniteAnglerHostPatchMarker",
-            TypeAttributes.Class | TypeAttributes.NotPublic | TypeAttributes.Abstract | TypeAttributes.Sealed, p.Module.TypeSystem.Object));
+        p.Module.Types.Add(new TypeDefinition(
+            "InfiniteAnglerHost",
+            "__InfiniteAnglerHostPatchMarker",
+            TypeAttributes.Class | TypeAttributes.NotPublic | TypeAttributes.Abstract | TypeAttributes.Sealed,
+            p.Module.TypeSystem.Object));
+
         var helper = Helper(p);
         var il = p.CompletionHandler.Body.GetILProcessor();
-        var next = p.AddCall.Next;
-        var a = il.Create(OpCodes.Ldarg_0);
-        var b = il.Create(OpCodes.Ldfld, p.WhoAmI);
-        var c = il.Create(OpCodes.Call, helper);
-        if (next is null) { il.Append(a); il.Append(b); il.Append(c); }
-        else { il.InsertBefore(next, a); il.InsertBefore(next, b); il.InsertBefore(next, c); }
+        var after = p.CompletionAddCall.Next;
+        var loadThis = il.Create(OpCodes.Ldarg_0);
+        var loadWho = il.Create(OpCodes.Ldfld, p.WhoAmI);
+        var call = il.Create(OpCodes.Call, helper);
+
+        if (after is null)
+        {
+            il.Append(loadThis);
+            il.Append(loadWho);
+            il.Append(call);
+        }
+        else
+        {
+            il.InsertBefore(after, loadThis);
+            il.InsertBefore(after, loadWho);
+            il.InsertBefore(after, call);
+        }
     }
 
-    static MethodDefinition Helper(Plan p)
+    private static MethodDefinition Helper(Plan p)
     {
-        var h = new MethodDefinition("__InfiniteAnglerHost_OnQuestCompleted",
-            MethodAttributes.Assembly | MethodAttributes.Static | MethodAttributes.HideBySig, p.Module.TypeSystem.Void);
+        var h = new MethodDefinition(
+            "__InfiniteAnglerHost_OnQuestCompleted",
+            MethodAttributes.Assembly | MethodAttributes.Static | MethodAttributes.HideBySig,
+            p.Module.TypeSystem.Void);
         h.Parameters.Add(new ParameterDefinition("whoAmI", ParameterAttributes.None, p.Module.TypeSystem.Int32));
         h.Body.InitLocals = true;
+
         var oldQuest = new VariableDefinition(p.Module.TypeSystem.Int32);
         var oldMode = new VariableDefinition(p.Module.TypeSystem.Int32);
+        var oldQuestFinished = new VariableDefinition(p.Module.TypeSystem.Boolean);
         var name = new VariableDefinition(p.Module.TypeSystem.String);
-        h.Body.Variables.Add(oldQuest); h.Body.Variables.Add(oldMode); h.Body.Variables.Add(name);
+        h.Body.Variables.Add(oldQuest);
+        h.Body.Variables.Add(oldMode);
+        h.Body.Variables.Add(oldQuestFinished);
+        h.Body.Variables.Add(name);
 
-        var add = (MethodReference)p.AddCall.Operand;
+        var add = (MethodReference)p.CompletionAddCall.Operand;
         var remove = new MethodReference("Remove", p.Module.TypeSystem.Boolean, add.DeclaringType)
         {
             HasThis = add.HasThis,
@@ -216,63 +454,204 @@ internal static class Program
             CallingConvention = add.CallingConvention
         };
         remove.Parameters.Add(new ParameterDefinition(add.Parameters[0].ParameterType));
+
         var il = h.Body.GetILProcessor();
         var ret = il.Create(OpCodes.Ret);
 
-        il.Append(il.Create(OpCodes.Ldsfld, p.NetMode)); il.Append(il.Create(OpCodes.Ldc_I4_2)); il.Append(il.Create(OpCodes.Bne_Un, ret));
-        il.Append(il.Create(OpCodes.Ldsfld, p.PlayerArray)); il.Append(il.Create(OpCodes.Ldarg_0)); il.Append(il.Create(OpCodes.Ldelem_Ref));
-        il.Append(il.Create(OpCodes.Ldfld, p.PlayerName)); il.Append(il.Create(OpCodes.Stloc, name));
-        il.Append(il.Create(OpCodes.Ldsfld, p.FinishedToday)); il.Append(il.Create(OpCodes.Ldloc, name)); il.Append(il.Create(OpCodes.Callvirt, remove)); il.Append(il.Create(OpCodes.Pop));
+        // This helper belongs only on the actual server-side completion path.
+        il.Append(il.Create(OpCodes.Ldsfld, p.NetMode));
+        il.Append(il.Create(OpCodes.Ldc_I4_2));
+        il.Append(il.Create(OpCodes.Bne_Un, ret));
 
-        il.Append(il.Create(OpCodes.Ldsfld, p.AnglerQuest)); il.Append(il.Create(OpCodes.Stloc, oldQuest));
-        il.Append(il.Create(OpCodes.Ldsfld, p.NetMode)); il.Append(il.Create(OpCodes.Stloc, oldMode));
-        il.Append(il.Create(OpCodes.Ldc_I4_0)); il.Append(il.Create(OpCodes.Stsfld, p.NetMode)); il.Append(il.Create(OpCodes.Call, p.Swap));
-        il.Append(il.Create(OpCodes.Ldloc, oldMode)); il.Append(il.Create(OpCodes.Stsfld, p.NetMode));
+        // Resolve the completing character's vanilla player name.
+        il.Append(il.Create(OpCodes.Ldsfld, p.PlayerArray));
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldelem_Ref));
+        il.Append(il.Create(OpCodes.Ldfld, p.PlayerName));
+        il.Append(il.Create(OpCodes.Stloc, name));
 
-        il.Append(il.Create(OpCodes.Ldc_I4, 74)); il.Append(il.Create(OpCodes.Ldarg_0)); il.Append(il.Create(OpCodes.Ldc_I4_M1));
-        il.Append(il.Create(OpCodes.Ldloc, name)); il.Append(il.Create(OpCodes.Call, p.FromLiteral));
+        // Undo only the daily completion entry that vanilla just added for this player.
+        il.Append(il.Create(OpCodes.Ldsfld, p.FinishedToday));
+        il.Append(il.Create(OpCodes.Ldloc, name));
+        il.Append(il.Create(OpCodes.Callvirt, remove));
+        il.Append(il.Create(OpCodes.Pop));
+
+        // Snapshot shared world state that AnglerQuestSwap is allowed to change.
+        il.Append(il.Create(OpCodes.Ldsfld, p.AnglerQuest));
+        il.Append(il.Create(OpCodes.Stloc, oldQuest));
+        il.Append(il.Create(OpCodes.Ldsfld, p.AnglerQuestFinished));
+        il.Append(il.Create(OpCodes.Stloc, oldQuestFinished));
+        il.Append(il.Create(OpCodes.Ldsfld, p.NetMode));
+        il.Append(il.Create(OpCodes.Stloc, oldMode));
+
+        // Borrow vanilla quest selection without allowing its normal network broadcast.
+        il.Append(il.Create(OpCodes.Ldc_I4_0));
+        il.Append(il.Create(OpCodes.Stsfld, p.NetMode));
+        il.Append(il.Create(OpCodes.Call, p.AnglerQuestSwap));
+        il.Append(il.Create(OpCodes.Ldloc, oldMode));
+        il.Append(il.Create(OpCodes.Stsfld, p.NetMode));
+
+        // Send the newly-selected quest only to the player who completed the previous one.
+        il.Append(il.Create(OpCodes.Ldc_I4, p.AnglerQuestMessageId));
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldc_I4_M1));
+        il.Append(il.Create(OpCodes.Ldloc, name));
+        il.Append(il.Create(OpCodes.Call, p.FromLiteral));
         for (int i = 4; i < p.SendData.Parameters.Count; i++)
         {
-            if (p.SendData.Parameters[i].ParameterType.MetadataType == MetadataType.Int32) il.Append(il.Create(OpCodes.Ldc_I4_0));
-            else il.Append(il.Create(OpCodes.Ldc_R4, 0f));
+            if (p.SendData.Parameters[i].ParameterType.MetadataType == MetadataType.Int32)
+                il.Append(il.Create(OpCodes.Ldc_I4_0));
+            else
+                il.Append(il.Create(OpCodes.Ldc_R4, 0f));
         }
         il.Append(il.Create(OpCodes.Call, p.SendData));
-        il.Append(il.Create(OpCodes.Ldloc, oldQuest)); il.Append(il.Create(OpCodes.Stsfld, p.AnglerQuest));
+
+        // Put the server's shared Angler state back exactly as it was before the private reroll.
+        il.Append(il.Create(OpCodes.Ldloc, oldQuest));
+        il.Append(il.Create(OpCodes.Stsfld, p.AnglerQuest));
+        il.Append(il.Create(OpCodes.Ldloc, oldQuestFinished));
+        il.Append(il.Create(OpCodes.Stsfld, p.AnglerQuestFinished));
         il.Append(ret);
+
         p.MainType.Methods.Add(h);
         return h;
     }
 
-    static bool IsListAdd(Instruction i)
+    private static int MessageId(TypeDefinition messageIdType, string name)
     {
-        if (i.OpCode.Code is not (Code.Call or Code.Callvirt) || i.Operand is not MethodReference m || m.Name != "Add" || m.Parameters.Count != 1) return false;
+        var field = messageIdType.Fields.SingleOrDefault(f => f.Name == name)
+                    ?? Fail<FieldDefinition>($"Terraria.ID.MessageID.{name} missing");
+        if (!field.IsStatic || !field.HasConstant)
+            Fail<object>($"Terraria.ID.MessageID.{name} is no longer a static constant");
+
+        int value;
+        try
+        {
+            value = Convert.ToInt32(field.Constant);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Terraria compatibility check failed: could not read MessageID.{name}. No changes were made.", ex);
+        }
+
+        if (value < 0 || value > byte.MaxValue)
+            Fail<object>($"Terraria.ID.MessageID.{name} is outside the vanilla byte packet range");
+        return value;
+    }
+
+    private static bool ContainsIntegerConstant(MethodDefinition method, int value)
+    {
+        if (!method.HasBody)
+            return false;
+
+        return method.Body.Instructions.Any(i => i.OpCode.Code switch
+        {
+            Code.Ldc_I4_M1 => value == -1,
+            Code.Ldc_I4_0 => value == 0,
+            Code.Ldc_I4_1 => value == 1,
+            Code.Ldc_I4_2 => value == 2,
+            Code.Ldc_I4_3 => value == 3,
+            Code.Ldc_I4_4 => value == 4,
+            Code.Ldc_I4_5 => value == 5,
+            Code.Ldc_I4_6 => value == 6,
+            Code.Ldc_I4_7 => value == 7,
+            Code.Ldc_I4_8 => value == 8,
+            Code.Ldc_I4_S => Convert.ToInt32(i.Operand) == value,
+            Code.Ldc_I4 => Convert.ToInt32(i.Operand) == value,
+            _ => false
+        });
+    }
+
+    private static bool IsListAdd(Instruction i)
+    {
+        if (i.OpCode.Code is not (Code.Call or Code.Callvirt) ||
+            i.Operand is not MethodReference m ||
+            m.Name != "Add" ||
+            m.Parameters.Count != 1)
+            return false;
+
         return m.DeclaringType.FullName.StartsWith("System.Collections.Generic.List`1", StringComparison.Ordinal);
     }
 
-    static bool Nearby(Mono.Collections.Generic.Collection<Instruction> ins, int at, FieldDefinition f, int radius)
+    private static bool Nearby(Mono.Collections.Generic.Collection<Instruction> instructions, int at, FieldDefinition field, int radius)
     {
         for (int i = Math.Max(0, at - radius); i <= at; i++)
-            if (ins[i].Operand is FieldReference fr && fr.FullName == f.FullName) return true;
+        {
+            if (instructions[i].Operand is FieldReference fr && fr.FullName == field.FullName)
+                return true;
+        }
         return false;
     }
 
-    static bool Refs(MethodDefinition m, FieldDefinition f) => m.HasBody && m.Body.Instructions.Any(i => i.Operand is FieldReference fr && fr.FullName == f.FullName);
-    static FieldDefinition Field(TypeDefinition t, string n) => t.Fields.SingleOrDefault(x => x.Name == n) ?? Fail<FieldDefinition>($"{t.FullName}.{n} missing");
-    static TypeDefinition? Type(ModuleDefinition m, string n) => Types(m).FirstOrDefault(x => x.FullName == n);
-    static IEnumerable<TypeDefinition> Types(ModuleDefinition m) { foreach (var t in m.Types) foreach (var x in Nested(t)) yield return x; }
-    static IEnumerable<TypeDefinition> Nested(TypeDefinition t) { yield return t; foreach (var n in t.NestedTypes) foreach (var x in Nested(n)) yield return x; }
-    static bool HasType(ModuleDefinition m, string n) => Type(m, n) is not null;
-    static T Fail<T>(string s) => throw new InvalidOperationException("Terraria compatibility check failed: " + s + ". No changes were made.");
+    private static bool Refs(MethodDefinition method, FieldDefinition field) =>
+        method.HasBody && method.Body.Instructions.Any(i =>
+            i.Operand is FieldReference fr && fr.FullName == field.FullName);
 
-    static DefaultAssemblyResolver Resolver(string target)
+    private static FieldDefinition Field(TypeDefinition type, string name) =>
+        type.Fields.SingleOrDefault(x => x.Name == name)
+        ?? Fail<FieldDefinition>($"{type.FullName}.{name} missing");
+
+    private static TypeDefinition? Type(ModuleDefinition module, string fullName) =>
+        Types(module).FirstOrDefault(x => x.FullName == fullName);
+
+    private static IEnumerable<TypeDefinition> Types(ModuleDefinition module)
     {
-        var r = new DefaultAssemblyResolver();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        void Add(string? d) { if (!string.IsNullOrWhiteSpace(d) && Directory.Exists(d)) { d = Path.GetFullPath(d); if (seen.Add(d)) r.AddSearchDirectory(d); } }
-        Add(Path.GetDirectoryName(target)); Add(AppContext.BaseDirectory); try { Add(RuntimeEnvironment.GetRuntimeDirectory()); } catch { }
-        return r;
+        foreach (var type in module.Types)
+            foreach (var nested in Nested(type))
+                yield return nested;
     }
 
-    static void EnsureTarget(string p) { if (!File.Exists(p)) throw new FileNotFoundException("Target file not found.", p); }
-    static string Hash(string p) { using var s = File.OpenRead(p); return Convert.ToHexString(SHA256.HashData(s)).ToLowerInvariant(); }
+    private static IEnumerable<TypeDefinition> Nested(TypeDefinition type)
+    {
+        yield return type;
+        foreach (var nested in type.NestedTypes)
+            foreach (var inner in Nested(nested))
+                yield return inner;
+    }
+
+    private static bool HasType(ModuleDefinition module, string fullName) => Type(module, fullName) is not null;
+
+    private static T Fail<T>(string reason) =>
+        throw new InvalidOperationException("Terraria compatibility check failed: " + reason + ". No changes were made.");
+
+    private static DefaultAssemblyResolver Resolver(string target)
+    {
+        var resolver = new DefaultAssemblyResolver();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string? directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+                return;
+            directory = Path.GetFullPath(directory);
+            if (seen.Add(directory))
+                resolver.AddSearchDirectory(directory);
+        }
+
+        Add(Path.GetDirectoryName(target));
+        Add(AppContext.BaseDirectory);
+        try
+        {
+            Add(RuntimeEnvironment.GetRuntimeDirectory());
+        }
+        catch
+        {
+            // Target-directory resolution is still available.
+        }
+
+        return resolver;
+    }
+
+    private static void EnsureTarget(string path)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Target file not found.", path);
+    }
+
+    private static string Hash(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
 }
