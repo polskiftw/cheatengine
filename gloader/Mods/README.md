@@ -17,7 +17,7 @@ Put the files in one immediate subfolder:
 
 ```text
 Mods/
-  InfiniteAngler/
+  Thing/
     Main.cs
     Patches.cs
     Helpers.cs
@@ -55,10 +55,42 @@ public static class Mod
 
 `Mod.Load()` is optional. A Harmony-only mod can contain only patch classes.
 
+## Client and server code
+
+gloader defines these C# preprocessor symbols automatically:
+
+```text
+GLOADER
+GLOADER_CLIENT   // compiling against Terraria.exe
+GLOADER_SERVER   // compiling against TerrariaServer.exe
+```
+
+So a single raw source mod can do this:
+
+```csharp
+#if GLOADER_SERVER
+// server-authoritative patches
+#else
+// client-side patches, or a no-op
+#endif
+```
+
+Normal Host & Play automatically starts the child `TerrariaServer.exe` through
+another gloader instance using the **same Mods folder**. You do not need a second
+server install step or a compiled server plugin.
+
+The included `InfiniteAngler.cs` uses this model: it is inert in the visible client
+and active in the Host & Play/dedicated server process. Joining players stay vanilla.
+
 ## Disable a mod
 
 - `Thing.cs` -> rename to `Thing.disabled.cs`
 - `Thing/` -> rename the folder to `Thing.disabled/`
 
-A compile or load failure disables only that source mod for that run and is written
-to `gloader/logs/gloader.log`.
+A compile or load failure disables only that source mod for that run. Client and
+server errors are written separately to:
+
+```text
+gloader/logs/gloader-client.log
+gloader/logs/gloader-server.log
+```
