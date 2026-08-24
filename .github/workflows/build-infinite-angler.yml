@@ -6,6 +6,10 @@ on:
     paths:
       - 'terraria/infinite-angler/**'
       - '.github/workflows/build-infinite-angler.yml'
+  pull_request:
+    paths:
+      - 'terraria/infinite-angler/**'
+      - '.github/workflows/build-infinite-angler.yml'
 
 permissions:
   contents: read
