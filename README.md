@@ -13,29 +13,33 @@ The workflow uploads a `CheatEngine75-clean-x64` artifact containing the freshly
 
 ## Terraria: Infinite Angler
 
-This repo also contains `terraria/infinite-angler`, an old-school drop-in patcher for vanilla Terraria. It removes the Angler's once-per-day player cooldown and rolls another quest after each successful reward while leaving normal fishing, reward generation, lifetime quest progression, and Host & Play intact.
+This repo contains two old-school drop-in patchers for vanilla Terraria:
 
-The initial reference target is Terraria **1.4.5.8**, but the patcher is deliberately **not hard-locked to a version string**. It validates the live Angler IL structure and refuses unfamiliar code instead of guessing.
+- **Option A — `terraria/infinite-angler-host` / InfiniteAnglerHost**: patch only the **Host & Play PC**. Any vanilla player connected to that host can keep taking Angler quests with no daily cooldown. Guests install nothing.
+- **Option B — `terraria/infinite-angler` / InfiniteAngler**: patch each individual PC. That player gets endless personal Angler quests regardless of who hosts.
 
-The `Build Infinite Angler` workflow publishes a self-contained Windows x64 `InfiniteAngler.exe`. Put it beside `Terraria.exe`, run it once on each PC that should have endless personal Angler quests, then launch Terraria normally through Steam.
+Both use Terraria **1.4.5.8** as the initial reference target but are deliberately **not hard-locked to a version string**. They validate the live methods/fields they modify and refuse unfamiliar structures instead of guessing.
 
-See `terraria/infinite-angler/README.md` and `terraria/infinite-angler/DESIGN.md` for install, restore, and implementation details.
+Option A uses only vanilla multiplayer semantics: after the server receives the normal Angler completion packet, it clears that player's completion name, asks vanilla quest selection for a new quest with broadcasting suppressed, sends ordinary Angler packet 74 only to that player, then restores the host's shared quest state.
+
+Do not stack Option A and Option B into the same `Terraria.exe`; restore one before installing the other.
 
 ## Why
 
-The Cheat Engine build exists to provide a normal CE executable capable of opening `.CT` tables without using the public bundled-offer installer. The Terraria patcher is separate and does not require Cheat Engine at runtime.
+The Cheat Engine build exists to provide a normal CE executable capable of opening `.CT` tables without using the public bundled-offer installer. The Terraria patchers are separate and do not require Cheat Engine at runtime.
 
 ## Provenance
 
 Each Cheat Engine artifact includes `BUILD-PROVENANCE.txt` with the exact upstream Git commit and the SHA-256 hash of the executable produced by that run.
 
-Infinite Angler build artifacts include `SHA256.txt` for the self-contained patcher executable.
+Infinite Angler artifacts include `SHA256.txt` for their self-contained patcher executable.
 
 ## Build
 
 Use GitHub Actions:
 
 - **Build clean Cheat Engine 7.5** for the CE artifact.
-- **Build Infinite Angler** for the Terraria drop-in patcher.
+- **Build Infinite Angler Host** for Option A (host-only).
+- **Build Infinite Angler** for Option B (per-PC).
 
 No installer is produced or executed for Cheat Engine itself. The only installers used by CE CI are the official Lazarus/FPC compiler installers referenced by Cheat Engine's own build documentation.
