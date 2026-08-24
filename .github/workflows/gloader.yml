@@ -26,10 +26,16 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore gloader.sln
+        shell: pwsh
+        run: |
+          dotnet restore gloader.sln
+          dotnet restore tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj
 
       - name: Build
-        run: dotnet build gloader.sln -c Release --no-restore
+        shell: pwsh
+        run: |
+          dotnet build gloader.sln -c Release --no-restore
+          dotnet build tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj -c Release --no-restore
 
       - name: Publish
         shell: pwsh
