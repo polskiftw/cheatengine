@@ -12,12 +12,18 @@ namespace GLoader
     {
         public static Assembly Compile(
             ModSource mod,
-            IReadOnlyList<MetadataReference> references)
+            IReadOnlyList<MetadataReference> references,
+            bool isServerTarget)
         {
+            var symbols = isServerTarget
+                ? new[] { "GLOADER", "GLOADER_SERVER" }
+                : new[] { "GLOADER", "GLOADER_CLIENT" };
+
             var parseOptions = new CSharpParseOptions(
                 languageVersion: LanguageVersion.Latest,
                 documentationMode: DocumentationMode.None,
-                kind: SourceCodeKind.Regular);
+                kind: SourceCodeKind.Regular,
+                preprocessorSymbols: symbols);
 
             var syntaxTrees = mod.SourceFiles
                 .Select(path => CSharpSyntaxTree.ParseText(
