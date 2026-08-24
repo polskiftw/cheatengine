@@ -1,0 +1,89 @@
+name: Build Infinite Angler Host
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'terraria/infinite-angler-host/**'
+      - '.github/workflows/build-infinite-angler-host.yml'
+  pull_request:
+    paths:
+      - 'terraria/infinite-angler-host/**'
+      - '.github/workflows/build-infinite-angler-host.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore terraria/infinite-angler-host/InfiniteAnglerHost.csproj
+
+      - name: Publish single-file Windows executable
+        run: >-
+          dotnet publish terraria/infinite-angler-host/InfiniteAnglerHost.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=false
+          -o out/InfiniteAnglerHost
+
+      - name: Build synthetic host and vanilla guest fixture
+        run: >-
+          dotnet build terraria/infinite-angler-host/test-fixture/SyntheticTerraria.csproj
+          -c Release
+          -o out/fixture
+
+      - name: Exercise host-only patch and restore
+        shell: pwsh
+        run: |
+          $patcher = Resolve-Path 'out/InfiniteAnglerHost/InfiniteAnglerHost.exe'
+          $fixture = Resolve-Path 'out/fixture/SyntheticTerrariaHost.dll'
+          $before = (Get-FileHash $fixture -Algorithm SHA256).Hash
+
+          & $patcher --check --target $fixture
+          if ($LASTEXITCODE -ne 0) { throw 'Host compatibility check failed on synthetic fixture.' }
+
+          & $patcher --target $fixture
+          if ($LASTEXITCODE -ne 0) { throw 'Host patch install failed on synthetic fixture.' }
+
+          & dotnet $fixture
+          if ($LASTEXITCODE -ne 0) { throw 'Patched host / vanilla guest behavior failed.' }
+
+          & $patcher --check --target $fixture
+          if ($LASTEXITCODE -ne 0) { throw 'Post-patch host structural check failed.' }
+
+          & $patcher --restore --target $fixture
+          if ($LASTEXITCODE -ne 0) { throw 'Host patch restore failed on synthetic fixture.' }
+
+          $after = (Get-FileHash $fixture -Algorithm SHA256).Hash
+          if ($before -ne $after) { throw 'Host restore did not reproduce the original fixture byte-for-byte.' }
+
+      - name: Package executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'out/InfiniteAnglerHost/InfiniteAnglerHost.exe')) {
+            throw 'InfiniteAnglerHost.exe was not produced.'
+          }
+          $hash = (Get-FileHash 'out/InfiniteAnglerHost/InfiniteAnglerHost.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "SHA256=$hash" | Set-Content 'out/InfiniteAnglerHost/SHA256.txt'
+          Copy-Item 'terraria/infinite-angler-host/README.md' 'out/InfiniteAnglerHost/README.md'
+          Get-ChildItem 'out/InfiniteAnglerHost'
+
+      - name: Upload host-only drop-in package
+        uses: actions/upload-artifact@v4
+        with:
+          name: InfiniteAnglerHost-win-x64
+          path: out/InfiniteAnglerHost/
+          if-no-files-found: error
