@@ -16,17 +16,53 @@ gloader.exe
    +-- Roslyn compiles each source mod in memory
    +-- Harmony applies the mod's runtime patches
    +-- invokes Terraria's normal entry point
+   +-- Host & Play TerrariaServer.exe launches are routed through gloader too
 ```
 
-Terraria's executable is not rewritten on disk. Mods are not precompiled DLLs.
+Terraria's executables are not rewritten on disk. Mods are not precompiled DLLs.
 
 Harmony itself is a runtime patching library and does not modify the target files on
 disk. The current Lib.Harmony package is MIT licensed.
 
+## Host & Play server support
+
+Run the visible client through gloader normally:
+
+```powershell
+.\gloader\gloader.exe
+```
+
+When vanilla Terraria later starts `TerrariaServer.exe` for **Multiplayer -> Host &
+Play**, gloader intercepts that exact child-process launch and transparently changes
+it to:
+
+```text
+gloader.exe --server --target TerrariaServer.exe --mods <same Mods folder> -- <vanilla server arguments>
+```
+
+The original Host & Play arguments, working directory, Steam environment, and process
+relationship are preserved. The gloader process becomes the server process and hosts
+`TerrariaServer.exe` in-process, so Terraria's client still owns and observes the
+same child process it launched.
+
+This means server-authoritative raw mods in `Mods/` work in normal Host & Play without
+patching `TerrariaServer.exe` on disk and without requiring joining players to install
+anything.
+
+`--no-mods` also disables the Host & Play redirect for that run, so the child server
+starts completely vanilla.
+
+Client and server write separate logs:
+
+```text
+gloader/logs/gloader-client.log
+gloader/logs/gloader-server.log
+```
+
 ## Why this survives updates better
 
 There is no hardcoded Terraria version check. Every launch recompiles the mod source
-against the `Terraria.exe` that is actually installed.
+against the exact `Terraria.exe` or `TerrariaServer.exe` that is actually installed.
 
 That does **not** make a mod magically compatible when Re-Logic changes the method
 or field the mod patches. It does mean the fix is usually just editing the `.cs`
@@ -108,6 +144,17 @@ No manifest. No custom scripting language. No required gloader inheritance tree.
 A mod can use normal C#, Terraria types, reflection, unsafe code, and Harmony directly.
 Harmony attributes are applied automatically.
 
+Each compile also gets simple target symbols:
+
+```text
+GLOADER
+GLOADER_CLIENT   // Terraria.exe
+GLOADER_SERVER   // TerrariaServer.exe
+```
+
+That lets one raw source file contain client-only and server-only code without adding
+a gloader API or metadata format.
+
 Optional one-time initialization is just:
 
 ```csharp
@@ -119,6 +166,27 @@ public static class Mod
     }
 }
 ```
+
+## Included mod: Infinite Angler
+
+`Mods/InfiniteAngler.cs` is the server-authoritative endless Angler quest mod.
+
+On the visible client it compiles to a no-op. In a Host & Play or dedicated server
+process it watches vanilla's Angler completion packet. It records whether the player
+was already in `Main.anglerWhoFinishedToday` before vanilla handles the packet, then
+only acts if vanilla successfully adds that player's name.
+
+After a successful completion it:
+
+1. removes only that completing player's daily completion entry;
+2. snapshots the shared Angler quest state;
+3. temporarily suppresses networking and asks vanilla `Main.AnglerQuestSwap()` to
+   choose another valid quest;
+4. sends the normal vanilla Angler Quest packet only to the completing player, with
+   that player's completion state false;
+5. restores the server's shared Angler quest state.
+
+No custom packet format is introduced. Joining clients can remain completely vanilla.
 
 ## Build
 
@@ -155,9 +223,12 @@ Included now:
 - automatic Harmony patch discovery;
 - optional `Mod.Load()`;
 - client (`Terraria.exe`) and dedicated-server (`TerrariaServer.exe`) targets;
+- automatic Host & Play server routing through gloader;
+- shared Mods folder between Host & Play client/server;
+- client/server preprocessor symbols;
+- separate client/server logs;
 - one broken mod does not stop the remaining mods from compiling/loading;
-- no hard version lock;
-- per-run log file.
+- no hard version lock.
 
 Not included yet:
 
