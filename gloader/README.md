@@ -85,6 +85,7 @@ Terraria/
     gloader.exe
     Mods/
       InfiniteAngler.cs
+      NoLiquidDupe.cs
     logs/
 ```
 
@@ -187,6 +188,39 @@ After a successful completion it:
 5. restores the server's shared Angler quest state.
 
 No custom packet format is introduced. Joining clients can remain completely vanilla.
+
+## Included mod: No Liquid Dupe
+
+`Mods/NoLiquidDupe.cs` is a server-authoritative fix for vanilla regular-bucket liquid
+duplication.
+
+Vanilla can turn an Empty Bucket into a completely full bucket after collecting only
+100-254 of the 255 liquid units represented by a full tile. That makes the familiar
+small U-shaped infinite-water/lava/honey loop possible.
+
+The mod leaves Terraria's liquid packet parser intact. Around an incoming liquid
+update from a player holding a **regular** Empty/Water/Lava/Honey Bucket, it snapshots
+a bounded area around that player before vanilla handles the packet and compares the
+liquid volume afterward.
+
+- a full 255-unit scoop is unchanged;
+- if a scoop removes only 100-254 units, the server records only the artificial
+  `255 - removed` excess for that player and liquid type;
+- when that player later pours that liquid, the server removes exactly the outstanding
+  artificial excess from only the liquid that was newly added by that placement;
+- corrected tiles are synchronized using Terraria's own `NetMessage.sendWater`
+  serializer, so no custom client packet or client mod is needed;
+- water, lava, and honey are covered;
+- Bottomless Buckets are not regular bucket item IDs and are deliberately untouched;
+- pumps and ordinary liquid simulation do not run through the regular-bucket filter.
+
+The conservation ledger is kept in memory by player name for the current server
+process. It is intentionally a lightweight gameplay fix rather than an adversarial
+anti-cheat system.
+
+As with Infinite Angler, the visible Host & Play client compiles this mod to a no-op.
+The redirected `TerrariaServer.exe` applies it for everyone, including completely
+vanilla joining clients.
 
 ## Build
 
