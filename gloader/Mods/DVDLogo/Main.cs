@@ -1,7 +1,6 @@
 #if !GLOADER_SERVER
 using System;
 using System.Diagnostics;
-using System.IO;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -9,9 +8,16 @@ using Terraria;
 
 internal static class DvdLogoScreensaver
 {
+    private const int LogoWidth = 64;
+    private const int LogoHeight = 32;
     private const float HorizontalSpeed = 205f;
     private const float VerticalSpeed = 153f;
     private const double MaxFrameSeconds = 0.05;
+
+    // 64x32 one-bit mask derived from the supplied DVD logo.
+    // Rogue Chaos uses the same basic idea: a monochrome mask is tinted at draw time.
+    private const string LogoBitsBase64 =
+        "AAAAAAAAAAAAAfg4HPwAAAAD/jwd/wAAAAP/PD3/gAAAA48cOefAAAADh5x5w8AAAAeHnHHDwAAAB4ec8cPAAAAHh5zjw8AAAAcHH+PDgAAABw8fw4eAAAAHfg/D/wAAAA/8D4P/AAAAD/gPh/wAAAAHAAYDwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAAAH////4AAAAP/AAAP/AAAHwAAAAAPgAA4AAAAAAHAAGAAAAAAAGAAQAAAVgAAIABwAAf+AADgAB4AB/4AB4AAB/gAAAH+AAAAf////+AAAAAAf//gAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static readonly Color[] Colors =
@@ -27,7 +33,7 @@ internal static class DvdLogoScreensaver
     };
 
     private static Texture2D _logo;
-    private static Vector2 _position = new Vector2(64f, 64f);
+    private static Vector2 _position = new Vector2(96f, 96f);
     private static Vector2 _velocity = new Vector2(HorizontalSpeed, VerticalSpeed);
     private static double _lastSeconds = -1.0;
     private static int _colorIndex;
@@ -55,8 +61,6 @@ internal static class DvdLogoScreensaver
                 return;
 
             EnsureLogo(spriteBatch.GraphicsDevice);
-            if (_logo == null)
-                return;
 
             var now = Clock.Elapsed.TotalSeconds;
             if (_lastSeconds < 0.0)
@@ -76,14 +80,14 @@ internal static class DvdLogoScreensaver
                 null,
                 Colors[_colorIndex],
                 0f,
-                Vector2.Zero,
+                new Vector2(LogoWidth / 2f, LogoHeight / 2f),
                 1f,
                 SpriteEffects.None,
                 0f);
         }
         catch
         {
-            // A cosmetic overlay should never be able to crash Terraria.
+            // Cosmetic overlay only: a failure must never take Terraria down with it.
             _disabled = true;
         }
     }
@@ -93,44 +97,20 @@ internal static class DvdLogoScreensaver
         if (_logo != null)
             return;
 
-        var path = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "Mods",
-            "DVDLogo",
-            "dvd-logo.png");
+        var packed = Convert.FromBase64String(LogoBitsBase64);
+        if (packed.Length != (LogoWidth * LogoHeight) / 8)
+            throw new InvalidOperationException("Embedded DVD logo mask has the wrong size.");
 
-        using (var stream = File.OpenRead(path))
-            _logo = Texture2D.FromStream(graphicsDevice, stream);
-
-        PremultiplyAlpha(_logo);
-        ClampIntoScreen();
-    }
-
-    private static void PremultiplyAlpha(Texture2D texture)
-    {
-        var pixels = new Color[texture.Width * texture.Height];
-        texture.GetData(pixels);
-
+        var pixels = new Color[LogoWidth * LogoHeight];
         for (var i = 0; i < pixels.Length; i++)
         {
-            var pixel = pixels[i];
-            if (pixel.A == 255)
-                continue;
-
-            if (pixel.A == 0)
-            {
-                pixels[i] = Color.Transparent;
-                continue;
-            }
-
-            pixels[i] = new Color(
-                (byte)(pixel.R * pixel.A / 255),
-                (byte)(pixel.G * pixel.A / 255),
-                (byte)(pixel.B * pixel.A / 255),
-                pixel.A);
+            var bit = (packed[i >> 3] >> (7 - (i & 7))) & 1;
+            pixels[i] = bit == 0 ? Color.Transparent : Color.White;
         }
 
-        texture.SetData(pixels);
+        _logo = new Texture2D(graphicsDevice, LogoWidth, LogoHeight);
+        _logo.SetData(pixels);
+        ClampIntoScreen();
     }
 
     private static void Move(float elapsedSeconds)
@@ -140,17 +120,17 @@ internal static class DvdLogoScreensaver
 
         _position += _velocity * elapsedSeconds;
 
-        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
-        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
+        var halfWidth = LogoWidth / 2f;
+        var halfHeight = LogoHeight / 2f;
+        var minX = halfWidth;
+        var maxX = Math.Max(halfWidth, Main.screenWidth - halfWidth);
+        var minY = halfHeight;
+        var maxY = Math.Max(halfHeight, Main.screenHeight - halfHeight);
         var bounced = false;
 
-        if (maxX <= 0f)
+        if (_position.X < minX)
         {
-            _position.X = 0f;
-        }
-        else if (_position.X < 0f)
-        {
-            _position.X = -_position.X;
+            _position.X = minX + (minX - _position.X);
             _velocity.X = Math.Abs(_velocity.X);
             bounced = true;
         }
@@ -161,13 +141,9 @@ internal static class DvdLogoScreensaver
             bounced = true;
         }
 
-        if (maxY <= 0f)
+        if (_position.Y < minY)
         {
-            _position.Y = 0f;
-        }
-        else if (_position.Y < 0f)
-        {
-            _position.Y = -_position.Y;
+            _position.Y = minY + (minY - _position.Y);
             _velocity.Y = Math.Abs(_velocity.Y);
             bounced = true;
         }
@@ -184,13 +160,15 @@ internal static class DvdLogoScreensaver
 
     private static void ClampIntoScreen()
     {
-        if (_logo == null)
-            return;
+        var halfWidth = LogoWidth / 2f;
+        var halfHeight = LogoHeight / 2f;
+        var minX = halfWidth;
+        var maxX = Math.Max(halfWidth, Main.screenWidth - halfWidth);
+        var minY = halfHeight;
+        var maxY = Math.Max(halfHeight, Main.screenHeight - halfHeight);
 
-        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
-        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
-        _position.X = Math.Max(0f, Math.Min(maxX, _position.X));
-        _position.Y = Math.Max(0f, Math.Min(maxY, _position.Y));
+        _position.X = Math.Max(minX, Math.Min(maxX, _position.X));
+        _position.Y = Math.Max(minY, Math.Min(maxY, _position.Y));
     }
 }
 #endif
