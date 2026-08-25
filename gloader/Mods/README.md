@@ -7,6 +7,7 @@ Drop raw C# source here.
 ```text
 Mods/
   InfiniteAngler.cs
+  NoLiquidDupe.cs
 ```
 
 A top-level `.cs` file is compiled in memory every time gloader starts.
@@ -95,6 +96,11 @@ server install step or a compiled server plugin.
 
 The included `InfiniteAngler.cs` uses this model: it is inert in the visible client
 and active in the Host & Play/dedicated server process. Joining players stay vanilla.
+
+`NoLiquidDupe.cs` uses the same server-only model. It fixes the regular-bucket
+water/lava/honey duplication loop by keeping the world-liquid volume conserved when
+vanilla fills a bucket from only 100-254/255 liquid units. Full scoops stay normal,
+Bottomless Buckets are untouched, and vanilla guests need no files.
 
 The included `RainwaveRadio/` mod does the opposite: it is client-only and becomes a
 no-op when the same Mods folder is compiled for `TerrariaServer.exe`.
