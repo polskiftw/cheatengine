@@ -8,9 +8,11 @@ Drop raw C# source here.
 Mods/
   InfiniteAngler.cs
   RainwaveRadio.cs
+  RainwaveRadio.ini
 ```
 
-Each file is compiled in memory every time gloader starts.
+Each C# file is compiled in memory every time gloader starts. Non-C# files such as
+`RainwaveRadio.ini` are ignored by mod discovery and can be used as data/config.
 
 ## Multi-file mod
 
@@ -90,16 +92,25 @@ no-op when the same Mods folder is compiled for `TerrariaServer.exe`.
 ### Rainwave Radio defaults
 
 `RainwaveRadio.cs` turns Terraria's music channel into a continuous Rainwave stream.
-It currently ships with the Rainwave **All** station as its default listening source.
+It ships with the Rainwave **All** station selected and the now-playing message enabled.
 
 - biome, event, and boss music changes do not restart or replace the radio stream;
 - Terraria's Music slider controls the radio volume;
 - pausing smoothly ducks the radio instead of pausing or abruptly muting it;
-- a short now-playing message is enabled and drawn with Terraria's normal MouseText
-  font/shadow styling;
+- a short now-playing message uses Terraria's normal MouseText font/shadow styling;
 - there is no Rainwave login, voting, or account integration;
 - if the stream becomes unhealthy, the radio is muted and vanilla Terraria music is
   allowed to resume while the radio reconnects.
+
+`RainwaveRadio.ini` contains the two user-facing settings:
+
+```ini
+Station=All
+ShowNowPlaying=true
+```
+
+Supported station values are `All`, `Game`, `OCReMix`, `Covers`, `Chiptunes`, and
+`Chill`. Changes apply on the next Terraria launch.
 
 The radio uses NAudio, which is shipped with the built gloader folder as a runtime
 dependency. The raw mod itself remains ordinary C# source.
