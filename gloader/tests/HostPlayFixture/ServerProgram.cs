@@ -1,17 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Terraria.Localization;
 
 namespace Terraria.ID
 {
     public static class MessageID
     {
-        // Deliberately not the current vanilla values. Infinite Angler must discover
-        // these from the assembly instead of hardcoding packet numbers.
-        public const byte AnglerQuest = 174;
         public const byte AnglerQuestFinished = 175;
-        public const byte QuestsCountSync = 176;
     }
 }
 
@@ -25,15 +20,32 @@ namespace Terraria
         public static List<string> anglerWhoFinishedToday = new List<string>();
         public static Player[] player = Enumerable.Range(0, 8).Select(_ => new Player()).ToArray();
 
+        public static bool triggerDawnReset;
+        public static int questSwapCount;
+
+        // Synthetic vanilla dawn behavior. Infinite Angler should suppress only the
+        // Clear + AnglerQuestSwap pair while leaving this method callable normally.
+        public static void UpdateTime()
+        {
+            if (triggerDawnReset)
+            {
+                triggerDawnReset = false;
+                anglerWhoFinishedToday.Clear();
+                AnglerQuestSwap();
+            }
+        }
+
         public static void AnglerQuestSwap()
         {
             anglerQuestFinished = false;
             anglerQuest = (anglerQuest + 1) % 40;
+            questSwapCount++;
         }
     }
 
     public sealed class Player
     {
+        public bool active;
         public string name = string.Empty;
     }
 
@@ -46,99 +58,20 @@ namespace Terraria
         {
             messageType = readBuffer[start];
             if (messageType != ID.MessageID.AnglerQuestFinished || Main.netMode != 2)
-            {
                 return;
-            }
 
-            var name = Main.player[whoAmI].name;
-            if (Main.anglerWhoFinishedToday.Contains(name))
-            {
+            var player = Main.player[whoAmI];
+            if (!player.active || string.IsNullOrEmpty(player.name))
                 return;
-            }
 
-            Main.anglerWhoFinishedToday.Add(name);
-        }
-    }
-
-    public static class NetMessage
-    {
-        public sealed class SentPacket
-        {
-            public int MessageType;
-            public int RemoteClient;
-            public int Quest;
-            public bool Completed;
-        }
-
-        public static readonly List<SentPacket> Sent = new List<SentPacket>();
-
-        public static void SendData(
-            int msgType,
-            int remoteClient = -1,
-            int ignoreClient = -1,
-            NetworkText text = null,
-            int number = 0,
-            float number2 = 0f,
-            float number3 = 0f,
-            float number4 = 0f,
-            int number5 = 0,
-            int number6 = 0,
-            int number7 = 0)
-        {
-            if (msgType != ID.MessageID.AnglerQuest)
-            {
-                return;
-            }
-
-            Sent.Add(new SentPacket
-            {
-                MessageType = msgType,
-                RemoteClient = remoteClient,
-                Quest = Main.anglerQuest,
-                Completed = Main.anglerWhoFinishedToday.Contains(text == null ? string.Empty : text.ToString())
-            });
-        }
-    }
-}
-
-namespace Terraria.Localization
-{
-    public sealed class NetworkText
-    {
-        private readonly string _text;
-
-        private NetworkText(string text)
-        {
-            _text = text;
-        }
-
-        public static NetworkText FromLiteral(string text)
-        {
-            return new NetworkText(text);
-        }
-
-        public override string ToString()
-        {
-            return _text;
+            if (!Main.anglerWhoFinishedToday.Contains(player.name))
+                Main.anglerWhoFinishedToday.Add(player.name);
         }
     }
 }
 
 namespace FixtureServer
 {
-    internal sealed class VanillaGuest
-    {
-        public int Quest { get; private set; } = -1;
-        public bool Completed { get; private set; } = true;
-        public bool CanQuest => !Completed;
-
-        public void ReceiveQuestPacket(int quest, bool completed)
-        {
-            Quest = quest;
-            Completed = completed;
-        }
-    }
-
     internal static class Program
     {
         public static int Main(string[] args)
@@ -147,42 +80,98 @@ namespace FixtureServer
                 args.Length == 2 && args[0] == "--fixture-arg" && args[1] == "hello world",
                 "Host & Play redirect did not preserve the original server arguments.");
 
+            ResetFixture();
+
+            // One of two connected players finishes. The round must stay put.
+            Complete(1);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 7, "quest advanced before every connected player finished");
+            Require(Terraria.Main.questSwapCount == 0, "quest swap ran too early");
+            Require(Terraria.Main.anglerWhoFinishedToday.SequenceEqual(new[] { "VanillaGuest" }),
+                "first player's vanilla completion marker was not preserved");
+
+            // Dawn must no longer reset either the quest or the completion list.
+            Terraria.Main.triggerDawnReset = true;
+            Tick();
+            Require(Terraria.Main.anglerQuest == 7, "dawn changed the Angler quest");
+            Require(Terraria.Main.questSwapCount == 0, "dawn still called AnglerQuestSwap");
+            Require(Terraria.Main.anglerWhoFinishedToday.SequenceEqual(new[] { "VanillaGuest" }),
+                "dawn cleared the current round's completion state");
+
+            // The second player completes; now the whole shared round advances once.
+            Complete(2);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 8, "all-player completion did not advance the quest");
+            Require(Terraria.Main.questSwapCount == 1, "all-player completion did not perform exactly one swap");
+            Require(Terraria.Main.anglerWhoFinishedToday.Count == 0,
+                "new shared round did not clear the completion list");
+
+            // A player joining during a round counts immediately and blocks advancement
+            // until they complete the same shared quest.
+            Connect(3, "LateGuest");
+            Complete(1);
+            Complete(2);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 8, "late joiner did not count toward the current round");
+
+            Complete(3);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 9, "round did not advance after late joiner completed");
+            Require(Terraria.Main.questSwapCount == 2, "late-join round swapped an unexpected number of times");
+            Require(Terraria.Main.anglerWhoFinishedToday.Count == 0,
+                "late-join round did not start cleanly");
+
+            // A disconnected player stops counting immediately. If everyone remaining
+            // is already done, the next server tick advances the round.
+            Complete(1);
+            Complete(2);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 9, "round advanced while connected third player was incomplete");
+
+            Terraria.Main.player[3].active = false;
+            Tick();
+            Require(Terraria.Main.anglerQuest == 10, "disconnect did not release the blocked round");
+            Require(Terraria.Main.questSwapCount == 3, "disconnect-triggered round swapped incorrectly");
+            Require(Terraria.Main.anglerWhoFinishedToday.Count == 0,
+                "disconnect-triggered round did not start cleanly");
+
+            // With only one connected player, that player's completion is the whole group.
+            Terraria.Main.player[2].active = false;
+            Complete(1);
+            Tick();
+            Require(Terraria.Main.anglerQuest == 11, "single connected player did not advance the shared quest");
+            Require(Terraria.Main.questSwapCount == 4, "single-player round swapped incorrectly");
+            Require(Terraria.Main.anglerWhoFinishedToday.Count == 0,
+                "single-player round did not clear completion state");
+
+            Console.WriteLine(
+                "PASS: Host & Play child was routed through gloader; Infinite Angler preserved quests across dawn, advanced only after all active players completed, counted joiners, ignored disconnects, and handled a one-player group.");
+            return 0;
+        }
+
+        private static void ResetFixture()
+        {
             Terraria.Main.netMode = 2;
             Terraria.Main.anglerQuest = 7;
             Terraria.Main.anglerQuestFinished = true;
             Terraria.Main.anglerWhoFinishedToday.Clear();
-            Terraria.Main.anglerWhoFinishedToday.Add("AlreadyDone");
-            Terraria.Main.player[1].name = "VanillaGuest";
-            Terraria.Main.player[2].name = "SecondGuest";
-            Terraria.NetMessage.Sent.Clear();
+            Terraria.Main.questSwapCount = 0;
+            Terraria.Main.triggerDawnReset = false;
 
-            Complete(1);
-            AssertSharedState("guest 1");
-            Require(Terraria.Main.anglerWhoFinishedToday.Contains("AlreadyDone"), "another player's completion state was lost");
-            Require(!Terraria.Main.anglerWhoFinishedToday.Contains("VanillaGuest"), "guest 1 cooldown name remained recorded");
+            foreach (var player in Terraria.Main.player)
+            {
+                player.active = false;
+                player.name = string.Empty;
+            }
 
-            Complete(2);
-            AssertSharedState("guest 2");
-            Require(Terraria.Main.anglerWhoFinishedToday.Contains("AlreadyDone"), "existing completion state was altered by guest 2");
-            Require(!Terraria.Main.anglerWhoFinishedToday.Contains("SecondGuest"), "guest 2 cooldown name remained recorded");
+            Connect(1, "VanillaGuest");
+            Connect(2, "SecondGuest");
+        }
 
-            // Repeat guest 1 to prove the daily completion marker really stays removed.
-            Complete(1);
-            AssertSharedState("guest 1 repeat");
-
-            Require(Terraria.NetMessage.Sent.Count == 3, "expected three private quest packets, got " + Terraria.NetMessage.Sent.Count);
-            AssertPacket(0, 1);
-            AssertPacket(1, 2);
-            AssertPacket(2, 1);
-
-            var vanillaGuest = new VanillaGuest();
-            var first = Terraria.NetMessage.Sent[0];
-            vanillaGuest.ReceiveQuestPacket(first.Quest, first.Completed);
-            Require(vanillaGuest.Quest == 8, "unmodified guest did not receive the rerolled quest");
-            Require(vanillaGuest.CanQuest, "unmodified guest remained cooldown-locked");
-
-            Console.WriteLine("PASS: Host & Play child was routed through gloader; Infinite Angler handled two vanilla guests, repeat quests, dynamic packet IDs, and preserved shared host state.");
-            return 0;
+        private static void Connect(int index, string name)
+        {
+            Terraria.Main.player[index].active = true;
+            Terraria.Main.player[index].name = name;
         }
 
         private static void Complete(int whoAmI)
@@ -191,31 +180,19 @@ namespace FixtureServer
             buffer.readBuffer[0] = Terraria.ID.MessageID.AnglerQuestFinished;
             int messageType;
             buffer.GetData(0, 1, out messageType);
-            Require(messageType == Terraria.ID.MessageID.AnglerQuestFinished, "fixture completion message ID changed unexpectedly");
+            Require(messageType == Terraria.ID.MessageID.AnglerQuestFinished,
+                "fixture completion message ID changed unexpectedly");
         }
 
-        private static void AssertSharedState(string label)
+        private static void Tick()
         {
-            Require(Terraria.Main.netMode == 2, "host netMode was not restored after " + label);
-            Require(Terraria.Main.anglerQuest == 7, "host global quest was not restored after " + label);
-            Require(Terraria.Main.anglerQuestFinished, "host global anglerQuestFinished was not restored after " + label);
-        }
-
-        private static void AssertPacket(int index, int expectedClient)
-        {
-            var packet = Terraria.NetMessage.Sent[index];
-            Require(packet.MessageType == Terraria.ID.MessageID.AnglerQuest, "packet " + index + " used a hardcoded/wrong message ID");
-            Require(packet.RemoteClient == expectedClient, "packet " + index + " targeted client " + packet.RemoteClient + ", expected " + expectedClient);
-            Require(packet.Quest == 8, "packet " + index + " carried quest " + packet.Quest + ", expected rerolled quest 8");
-            Require(!packet.Completed, "packet " + index + " still marked the completing guest finished");
+            Terraria.Main.UpdateTime();
         }
 
         private static void Require(bool condition, string message)
         {
             if (!condition)
-            {
                 throw new InvalidOperationException(message);
-            }
         }
     }
 }
