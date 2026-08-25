@@ -2,14 +2,14 @@
 
 Client-side gloader mod that keeps a classic DVD logo bouncing around the Terraria screen.
 
-- the logo is a built-in 64×32 monochrome mask, so there is no external image file to load or package;
-- the mask is tinted at draw time, following the same basic rendering idea used by SM64: Rogue Chaos Edition's DVD effect;
-- movement is based on real frame time, so speed stays consistent across frame rates;
-- the logo changes to a different bright color on every wall bounce;
-- hitting a corner changes color once;
-- window/resolution changes are handled by the current screen bounds;
-- the server build is a no-op.
+The mod is intentionally simple:
 
-The mod is included automatically when gloader's `build.ps1` copies the `Mods` folder into the distribution.
+- `Main.cs` is compiled by gloader at runtime;
+- `dvd-logo.png` sits beside it as a normal PNG and is loaded directly at runtime;
+- the logo moves continuously and reflects off the current screen edges;
+- every wall bounce picks a visibly different bright hue;
+- a corner hit changes color once;
+- window/resolution changes use the current screen bounds;
+- the dedicated-server build is a no-op.
 
-Disable it by renaming `DVDLogo` to `DVDLogo.disabled`.
+The PNG is not embedded, converted, or encoded into the C# source.

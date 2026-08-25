@@ -1,6 +1,7 @@
 #if !GLOADER_SERVER
 using System;
 using System.Diagnostics;
+using System.IO;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -8,35 +9,19 @@ using Terraria;
 
 internal static class DvdLogoScreensaver
 {
-    private const int LogoWidth = 64;
-    private const int LogoHeight = 32;
-    private const float HorizontalSpeed = 205f;
-    private const float VerticalSpeed = 153f;
+    private const float Speed = 190f;
     private const double MaxFrameSeconds = 0.05;
 
-    // 64x32 one-bit mask derived from the supplied DVD logo.
-    // Rogue Chaos uses the same basic idea: a monochrome mask is tinted at draw time.
-    private const string LogoBitsBase64 =
-        "AAAAAAAAAAAAAfg4HPwAAAAD/jwd/wAAAAP/PD3/gAAAA48cOefAAAADh5x5w8AAAAeHnHHDwAAAB4ec8cPAAAAHh5zjw8AAAAcHH+PDgAAABw8fw4eAAAAHfg/D/wAAAA/8D4P/AAAAD/gPh/wAAAAHAAYDwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAAAH////4AAAAP/AAAP/AAAHwAAAAAPgAA4AAAAAAHAAGAAAAAAAGAAQAAAVgAAIABwAAf+AADgAB4AB/4AB4AAB/gAAAH+AAAAf////+AAAAAAf//gAAAAAAAAAAAAAAAAAAAAAAAAA==";
-
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
-    private static readonly Color[] Colors =
-    {
-        new Color(255, 70, 70),
-        new Color(255, 170, 45),
-        new Color(255, 235, 55),
-        new Color(80, 235, 105),
-        new Color(55, 220, 235),
-        new Color(80, 130, 255),
-        new Color(185, 90, 255),
-        new Color(255, 80, 195)
-    };
+    private static readonly Random Random = new Random();
 
     private static Texture2D _logo;
-    private static Vector2 _position = new Vector2(96f, 96f);
-    private static Vector2 _velocity = new Vector2(HorizontalSpeed, VerticalSpeed);
+    private static Vector2 _position;
+    private static Vector2 _velocity;
+    private static Color _color = Color.White;
+    private static float _hue;
     private static double _lastSeconds = -1.0;
-    private static int _colorIndex;
+    private static bool _initialized;
     private static bool _disabled;
 
     [HarmonyPatch(typeof(Main), "DrawInterface_33_MouseText")]
@@ -61,13 +46,15 @@ internal static class DvdLogoScreensaver
                 return;
 
             EnsureLogo(spriteBatch.GraphicsDevice);
+            if (_logo == null)
+                return;
+
+            if (!_initialized)
+                InitializeMotion();
 
             var now = Clock.Elapsed.TotalSeconds;
             if (_lastSeconds < 0.0)
-            {
                 _lastSeconds = now;
-                ClampIntoScreen();
-            }
 
             var elapsed = Math.Max(0.0, Math.Min(MaxFrameSeconds, now - _lastSeconds));
             _lastSeconds = now;
@@ -78,16 +65,16 @@ internal static class DvdLogoScreensaver
                 _logo,
                 _position,
                 null,
-                Colors[_colorIndex],
+                _color,
                 0f,
-                new Vector2(LogoWidth / 2f, LogoHeight / 2f),
+                Vector2.Zero,
                 1f,
                 SpriteEffects.None,
                 0f);
         }
-        catch
+        catch (Exception ex)
         {
-            // Cosmetic overlay only: a failure must never take Terraria down with it.
+            Console.Error.WriteLine("DVDLogo disabled after an error: " + ex);
             _disabled = true;
         }
     }
@@ -97,20 +84,65 @@ internal static class DvdLogoScreensaver
         if (_logo != null)
             return;
 
-        var packed = Convert.FromBase64String(LogoBitsBase64);
-        if (packed.Length != (LogoWidth * LogoHeight) / 8)
-            throw new InvalidOperationException("Embedded DVD logo mask has the wrong size.");
+        var path = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "Mods",
+            "DVDLogo",
+            "dvd-logo.png");
 
-        var pixels = new Color[LogoWidth * LogoHeight];
+        using (var stream = File.OpenRead(path))
+            _logo = Texture2D.FromStream(graphicsDevice, stream);
+
+        PremultiplyAlpha(_logo);
+    }
+
+    private static void InitializeMotion()
+    {
+        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
+        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
+
+        _position = new Vector2(
+            maxX > 0f ? (float)(Random.NextDouble() * maxX) : 0f,
+            maxY > 0f ? (float)(Random.NextDouble() * maxY) : 0f);
+
+        var angle = (25.0 + Random.NextDouble() * 40.0) * Math.PI / 180.0;
+        var xSign = Random.Next(2) == 0 ? -1f : 1f;
+        var ySign = Random.Next(2) == 0 ? -1f : 1f;
+
+        _velocity = new Vector2(
+            (float)Math.Cos(angle) * Speed * xSign,
+            (float)Math.Sin(angle) * Speed * ySign);
+
+        _hue = (float)(Random.NextDouble() * 360.0);
+        _color = HsvToColor(_hue, 0.9f, 1f);
+        _initialized = true;
+    }
+
+    private static void PremultiplyAlpha(Texture2D texture)
+    {
+        var pixels = new Color[texture.Width * texture.Height];
+        texture.GetData(pixels);
+
         for (var i = 0; i < pixels.Length; i++)
         {
-            var bit = (packed[i >> 3] >> (7 - (i & 7))) & 1;
-            pixels[i] = bit == 0 ? Color.Transparent : Color.White;
+            var pixel = pixels[i];
+            if (pixel.A == 255)
+                continue;
+
+            if (pixel.A == 0)
+            {
+                pixels[i] = Color.Transparent;
+                continue;
+            }
+
+            pixels[i] = new Color(
+                (byte)(pixel.R * pixel.A / 255),
+                (byte)(pixel.G * pixel.A / 255),
+                (byte)(pixel.B * pixel.A / 255),
+                pixel.A);
         }
 
-        _logo = new Texture2D(graphicsDevice, LogoWidth, LogoHeight);
-        _logo.SetData(pixels);
-        ClampIntoScreen();
+        texture.SetData(pixels);
     }
 
     private static void Move(float elapsedSeconds)
@@ -120,17 +152,17 @@ internal static class DvdLogoScreensaver
 
         _position += _velocity * elapsedSeconds;
 
-        var halfWidth = LogoWidth / 2f;
-        var halfHeight = LogoHeight / 2f;
-        var minX = halfWidth;
-        var maxX = Math.Max(halfWidth, Main.screenWidth - halfWidth);
-        var minY = halfHeight;
-        var maxY = Math.Max(halfHeight, Main.screenHeight - halfHeight);
+        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
+        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
         var bounced = false;
 
-        if (_position.X < minX)
+        if (maxX <= 0f)
         {
-            _position.X = minX + (minX - _position.X);
+            _position.X = 0f;
+        }
+        else if (_position.X < 0f)
+        {
+            _position.X = -_position.X;
             _velocity.X = Math.Abs(_velocity.X);
             bounced = true;
         }
@@ -141,9 +173,13 @@ internal static class DvdLogoScreensaver
             bounced = true;
         }
 
-        if (_position.Y < minY)
+        if (maxY <= 0f)
         {
-            _position.Y = minY + (minY - _position.Y);
+            _position.Y = 0f;
+        }
+        else if (_position.Y < 0f)
+        {
+            _position.Y = -_position.Y;
             _velocity.Y = Math.Abs(_velocity.Y);
             bounced = true;
         }
@@ -155,20 +191,61 @@ internal static class DvdLogoScreensaver
         }
 
         if (bounced)
-            _colorIndex = (_colorIndex + 1) % Colors.Length;
+            ChangeColor();
     }
 
-    private static void ClampIntoScreen()
+    private static void ChangeColor()
     {
-        var halfWidth = LogoWidth / 2f;
-        var halfHeight = LogoHeight / 2f;
-        var minX = halfWidth;
-        var maxX = Math.Max(halfWidth, Main.screenWidth - halfWidth);
-        var minY = halfHeight;
-        var maxY = Math.Max(halfHeight, Main.screenHeight - halfHeight);
+        // Keep the next hue far enough away that every bounce is visibly different.
+        _hue = (_hue + 70f + (float)(Random.NextDouble() * 220.0)) % 360f;
+        _color = HsvToColor(_hue, 0.9f, 1f);
+    }
 
-        _position.X = Math.Max(minX, Math.Min(maxX, _position.X));
-        _position.Y = Math.Max(minY, Math.Min(maxY, _position.Y));
+    private static Color HsvToColor(float hue, float saturation, float value)
+    {
+        hue %= 360f;
+        if (hue < 0f)
+            hue += 360f;
+
+        var chroma = value * saturation;
+        var sector = hue / 60f;
+        var x = chroma * (1f - Math.Abs(sector % 2f - 1f));
+
+        float r;
+        float g;
+        float b;
+
+        if (sector < 1f)
+        {
+            r = chroma; g = x; b = 0f;
+        }
+        else if (sector < 2f)
+        {
+            r = x; g = chroma; b = 0f;
+        }
+        else if (sector < 3f)
+        {
+            r = 0f; g = chroma; b = x;
+        }
+        else if (sector < 4f)
+        {
+            r = 0f; g = x; b = chroma;
+        }
+        else if (sector < 5f)
+        {
+            r = x; g = 0f; b = chroma;
+        }
+        else
+        {
+            r = chroma; g = 0f; b = x;
+        }
+
+        var m = value - chroma;
+        return new Color(
+            (byte)((r + m) * 255f),
+            (byte)((g + m) * 255f),
+            (byte)((b + m) * 255f),
+            255);
     }
 }
 #endif
