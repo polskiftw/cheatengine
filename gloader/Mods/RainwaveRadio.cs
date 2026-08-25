@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using HarmonyLib;
 using NAudio.Wave;
@@ -30,10 +31,9 @@ public static class Mod
 internal static class RainwaveRadio
 {
     private const string HarmonyId = "gloader.mod.rainwaveradio";
-    private const int StationId = 5; // Rainwave All
-    private const string TuneInUrl = "https://rainwave.cc/tune_in/5.mp3.m3u";
-    private const string FallbackStreamUrl = "https://gamestream.rainwave.cc/all.mp3";
-    private const string InfoUrl = "https://rainwave.cc/api4/info?sid=5";
+
+    private const int DefaultStationId = 5;
+    private const string DefaultStationMount = "all";
 
     private const int TargetSampleRate = 44100;
     private const int TargetChannels = 2;
@@ -55,6 +55,18 @@ internal static class RainwaveRadio
     private static readonly Queue<byte[]> AudioQueue = new Queue<byte[]>();
     private static readonly object OverlayLock = new object();
     private static readonly System.Diagnostics.Stopwatch Clock = System.Diagnostics.Stopwatch.StartNew();
+
+    private static readonly Regex CurrentSongRegex = new Regex(
+        "\"sched_current\"\s*:\s*\{.*?\"song_data\"\s*:\s*\{.*?\"title\"\s*:\s*\"((?:\\.|[^\"\\])*)\".*?\"artists\"\s*:\s*\[(.*?)\]",
+        RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ArtistRegex = new Regex(
+        "\"name\"\s*:\s*\"((?:\\.|[^\"\\])*)\"",
+        RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static int _stationId = DefaultStationId;
+    private static string _stationMount = DefaultStationMount;
+    private static bool _showNowPlaying = true;
 
     private static Type _mainType;
     private static FieldInfo _musicVolumeField;
@@ -88,6 +100,8 @@ internal static class RainwaveRadio
         if (Interlocked.Exchange(ref _initialized, 1) != 0)
             return;
 
+        LoadSettings();
+
         _mainType = AccessTools.TypeByName("Terraria.Main");
         if (_mainType == null)
             throw new TypeLoadException("Terraria.Main was not found.");
@@ -108,16 +122,107 @@ internal static class RainwaveRadio
                 updateAudio,
                 prefix: new HarmonyMethod(AccessTools.Method(typeof(RainwaveRadio), nameof(UpdateAudioPrefix))),
                 postfix: new HarmonyMethod(AccessTools.Method(typeof(RainwaveRadio), nameof(UpdateAudioPostfix))));
+
+            if (_showNowPlaying)
+                TryInstallOverlayPatch(harmony);
+            else
+                _overlayAvailable = false;
+
+            StartMetadataWorker();
+            StartAudioWorker();
         }
         catch
         {
             harmony.UnpatchAll(HarmonyId);
             throw;
         }
+    }
 
-        TryInstallOverlayPatch(harmony);
-        StartMetadataWorker();
-        StartAudioWorker();
+    private static void LoadSettings()
+    {
+        _stationId = DefaultStationId;
+        _stationMount = DefaultStationMount;
+        _showNowPlaying = true;
+
+        try
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mods", "RainwaveRadio.ini");
+            if (!File.Exists(path))
+                return;
+
+            foreach (var rawLine in File.ReadAllLines(path))
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith(";", StringComparison.Ordinal))
+                    continue;
+
+                var equals = line.IndexOf('=');
+                if (equals <= 0)
+                    continue;
+
+                var key = line.Substring(0, equals).Trim();
+                var value = line.Substring(equals + 1).Trim();
+
+                if (string.Equals(key, "Station", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyStation(value);
+                }
+                else if (string.Equals(key, "ShowNowPlaying", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool enabled;
+                    if (bool.TryParse(value, out enabled))
+                        _showNowPlaying = enabled;
+                }
+            }
+        }
+        catch
+        {
+            _stationId = DefaultStationId;
+            _stationMount = DefaultStationMount;
+            _showNowPlaying = true;
+        }
+    }
+
+    private static void ApplyStation(string value)
+    {
+        var normalized = (value ?? string.Empty)
+            .Trim()
+            .Replace(" ", string.Empty)
+            .Replace("-", string.Empty)
+            .ToLowerInvariant();
+
+        switch (normalized)
+        {
+            case "game":
+            case "gamemusic":
+                _stationId = 1;
+                _stationMount = "game";
+                return;
+            case "ocremix":
+            case "ocr":
+                _stationId = 2;
+                _stationMount = "ocremix";
+                return;
+            case "covers":
+            case "cover":
+                _stationId = 3;
+                _stationMount = "covers";
+                return;
+            case "chiptunes":
+            case "chiptune":
+            case "chip":
+                _stationId = 4;
+                _stationMount = "chiptune";
+                return;
+            case "chill":
+                _stationId = 6;
+                _stationMount = "chill";
+                return;
+            default:
+                _stationId = DefaultStationId;
+                _stationMount = DefaultStationMount;
+                return;
+        }
     }
 
     private static void TryInstallOverlayPatch(Harmony harmony)
@@ -137,7 +242,7 @@ internal static class RainwaveRadio
         }
         catch
         {
-            // The radio is more important than the cosmetic now-playing overlay.
+            // UI changes should never disable the radio itself.
             _overlayAvailable = false;
         }
     }
@@ -157,7 +262,7 @@ internal static class RainwaveRadio
 
     private static void DrawOverlayPrefix()
     {
-        if (!_overlayAvailable)
+        if (!_overlayAvailable || !_showNowPlaying)
             return;
 
         try
@@ -166,7 +271,6 @@ internal static class RainwaveRadio
         }
         catch
         {
-            // If a future Terraria update changes UI internals, disable only the overlay.
             _overlayAvailable = false;
         }
     }
@@ -175,7 +279,7 @@ internal static class RainwaveRadio
     {
         try
         {
-            return Math.Max(0f, Math.Min(1f, Convert.ToSingle(_musicVolumeField.GetValue(null), CultureInfo.InvariantCulture)));
+            return Clamp01(Convert.ToSingle(_musicVolumeField.GetValue(null), CultureInfo.InvariantCulture));
         }
         catch
         {
@@ -187,7 +291,7 @@ internal static class RainwaveRadio
     {
         try
         {
-            _musicVolumeField.SetValue(null, Math.Max(0f, Math.Min(1f, value)));
+            _musicVolumeField.SetValue(null, Clamp01(value));
         }
         catch
         {
@@ -212,7 +316,9 @@ internal static class RainwaveRadio
     private static void Tick(float musicSlider)
     {
         var now = Clock.Elapsed.TotalSeconds;
-        var dt = _lastTickSeconds <= 0.0 ? 1.0 / 60.0 : Math.Max(0.0, Math.Min(0.25, now - _lastTickSeconds));
+        var dt = _lastTickSeconds <= 0.0
+            ? 1.0 / 60.0
+            : Math.Max(0.0, Math.Min(0.25, now - _lastTickSeconds));
         _lastTickSeconds = now;
 
         var targetDuck = IsPaused() ? PauseDuckLevel : 1f;
@@ -232,8 +338,13 @@ internal static class RainwaveRadio
         if (_dynamicSound == null)
             return;
 
-        SetDynamicSoundVolume(Math.Max(0f, Math.Min(1f, musicSlider * _duck)));
+        SetDynamicSoundVolume(Clamp01(musicSlider * _duck));
         FeedDynamicSound();
+    }
+
+    private static float Clamp01(float value)
+    {
+        return Math.Max(0f, Math.Min(1f, value));
     }
 
     private static float MoveTowards(float current, float target, float maxDelta)
@@ -249,10 +360,7 @@ internal static class RainwaveRadio
             return false;
 
         var last = Interlocked.Read(ref _lastAudioUtcTicks);
-        if (last <= 0)
-            return false;
-
-        return DateTime.UtcNow.Ticks - last <= TimeSpan.FromSeconds(RadioHealthySeconds).Ticks;
+        return last > 0 && DateTime.UtcNow.Ticks - last <= TimeSpan.FromSeconds(RadioHealthySeconds).Ticks;
     }
 
     private static void EnsureAudioWorkerHealthy()
@@ -290,7 +398,9 @@ internal static class RainwaveRadio
             {
                 var streamUrl = ResolveStreamUrl();
                 using (var reader = new MediaFoundationReader(streamUrl))
-                using (var resampler = new MediaFoundationResampler(reader, new WaveFormat(TargetSampleRate, TargetBits, TargetChannels)))
+                using (var resampler = new MediaFoundationResampler(
+                    reader,
+                    new WaveFormat(TargetSampleRate, TargetBits, TargetChannels)))
                 {
                     resampler.ResamplerQuality = 60;
                     var bytesPerSecond = TargetSampleRate * TargetChannels * (TargetBits / 8);
@@ -331,7 +441,10 @@ internal static class RainwaveRadio
     {
         try
         {
-            var playlist = DownloadText(TuneInUrl, 5000);
+            var playlist = DownloadText(
+                "https://rainwave.cc/tune_in/" + _stationId + ".mp3.m3u",
+                5000);
+
             foreach (var rawLine in playlist.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var line = rawLine.Trim();
@@ -348,11 +461,14 @@ internal static class RainwaveRadio
         {
         }
 
-        return FallbackStreamUrl;
+        return "https://gamestream.rainwave.cc/" + _stationMount + ".mp3";
     }
 
     private static void StartMetadataWorker()
     {
+        if (!_showNowPlaying)
+            return;
+
         var thread = new Thread(MetadataWorker)
         {
             IsBackground = true,
@@ -367,9 +483,9 @@ internal static class RainwaveRadio
         {
             try
             {
-                var json = DownloadText(InfoUrl, 5000);
+                var json = DownloadText("https://rainwave.cc/api4/info?sid=" + _stationId, 5000);
                 string display;
-                if (TryParseNowPlaying(json, out display) && !string.IsNullOrWhiteSpace(display))
+                if (TryParseNowPlaying(json, out display))
                     SetNowPlaying(display);
             }
             catch
@@ -380,212 +496,49 @@ internal static class RainwaveRadio
         }
     }
 
-    private static string DownloadText(string url, int timeoutMilliseconds)
-    {
-        var request = (HttpWebRequest)WebRequest.Create(url);
-        request.Method = "GET";
-        request.UserAgent = "gloader-rainwave-radio/0.1";
-        request.Accept = "*/*";
-        request.Timeout = timeoutMilliseconds;
-        request.ReadWriteTimeout = timeoutMilliseconds;
-        request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-
-        using (var response = (HttpWebResponse)request.GetResponse())
-        using (var stream = response.GetResponseStream())
-        using (var reader = new StreamReader(stream, Encoding.UTF8, true))
-            return reader.ReadToEnd();
-    }
-
     private static bool TryParseNowPlaying(string json, out string display)
     {
         display = null;
-        string current;
-        string songData;
-        string title;
-
-        if (!TryGetObject(json, "sched_current", out current) ||
-            !TryGetObject(current, "song_data", out songData) ||
-            !TryGetString(songData, "title", out title) ||
-            string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(json))
             return false;
 
-        string artistsArray;
-        var artists = new List<string>();
-        if (TryGetArray(songData, "artists", out artistsArray))
-        {
-            foreach (var artistObject in EnumerateObjects(artistsArray))
-            {
-                string artistName;
-                if (TryGetString(artistObject, "name", out artistName) && !string.IsNullOrWhiteSpace(artistName))
-                    artists.Add(artistName.Trim());
-            }
-        }
+        var current = CurrentSongRegex.Match(json);
+        if (!current.Success)
+            return false;
 
-        var artistText = artists.Count == 0 ? string.Empty : string.Join(", ", artists.Distinct(StringComparer.OrdinalIgnoreCase));
-        display = artistText.Length == 0
-            ? "Now playing: " + title.Trim()
-            : "Now playing: " + artistText + " - " + title.Trim();
+        var title = UnescapeJsonString(current.Groups[1].Value).Trim();
+        if (title.Length == 0)
+            return false;
+
+        var artists = ArtistRegex.Matches(current.Groups[2].Value)
+            .Cast<Match>()
+            .Select(match => UnescapeJsonString(match.Groups[1].Value).Trim())
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        display = artists.Length == 0
+            ? "Now playing: " + title
+            : "Now playing: " + string.Join(", ", artists) + " - " + title;
         return true;
     }
 
-    private static bool TryGetObject(string json, string key, out string value)
+    private static string UnescapeJsonString(string value)
     {
-        return TryGetComposite(json, key, '{', '}', out value);
-    }
+        if (string.IsNullOrEmpty(value) || value.IndexOf('\\') < 0)
+            return value ?? string.Empty;
 
-    private static bool TryGetArray(string json, string key, out string value)
-    {
-        return TryGetComposite(json, key, '[', ']', out value);
-    }
-
-    private static bool TryGetComposite(string json, string key, char open, char close, out string value)
-    {
-        value = null;
-        int valueStart;
-        if (!TryFindTopLevelValue(json, key, out valueStart) || valueStart >= json.Length || json[valueStart] != open)
-            return false;
-
-        var end = FindMatching(json, valueStart, open, close);
-        if (end < 0)
-            return false;
-
-        value = json.Substring(valueStart, end - valueStart + 1);
-        return true;
-    }
-
-    private static bool TryGetString(string json, string key, out string value)
-    {
-        value = null;
-        int valueStart;
-        if (!TryFindTopLevelValue(json, key, out valueStart) || valueStart >= json.Length || json[valueStart] != '"')
-            return false;
-
-        int end;
-        if (!TryReadJsonString(json, valueStart, out value, out end))
-            return false;
-        return true;
-    }
-
-    private static bool TryFindTopLevelValue(string json, string key, out int valueStart)
-    {
-        valueStart = -1;
-        if (string.IsNullOrEmpty(json))
-            return false;
-
-        var depth = 0;
-        var i = 0;
-        while (i < json.Length)
+        var builder = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
         {
-            var c = json[i];
-            if (c == '"')
-            {
-                string token;
-                int end;
-                if (!TryReadJsonString(json, i, out token, out end))
-                    return false;
-
-                if (depth == 1 && string.Equals(token, key, StringComparison.Ordinal))
-                {
-                    var p = SkipWhitespace(json, end + 1);
-                    if (p < json.Length && json[p] == ':')
-                    {
-                        p = SkipWhitespace(json, p + 1);
-                        valueStart = p;
-                        return p < json.Length;
-                    }
-                }
-
-                i = end + 1;
-                continue;
-            }
-
-            if (c == '{' || c == '[')
-                depth++;
-            else if (c == '}' || c == ']')
-                depth--;
-            i++;
-        }
-
-        return false;
-    }
-
-    private static int FindMatching(string json, int start, char open, char close)
-    {
-        var depth = 0;
-        for (var i = start; i < json.Length; i++)
-        {
-            if (json[i] == '"')
-            {
-                string ignored;
-                int end;
-                if (!TryReadJsonString(json, i, out ignored, out end))
-                    return -1;
-                i = end;
-                continue;
-            }
-
-            if (json[i] == open)
-                depth++;
-            else if (json[i] == close && --depth == 0)
-                return i;
-        }
-        return -1;
-    }
-
-    private static IEnumerable<string> EnumerateObjects(string jsonArray)
-    {
-        for (var i = 0; i < jsonArray.Length; i++)
-        {
-            if (jsonArray[i] == '"')
-            {
-                string ignored;
-                int end;
-                if (!TryReadJsonString(jsonArray, i, out ignored, out end))
-                    yield break;
-                i = end;
-                continue;
-            }
-
-            if (jsonArray[i] != '{')
-                continue;
-
-            var endObject = FindMatching(jsonArray, i, '{', '}');
-            if (endObject < 0)
-                yield break;
-
-            yield return jsonArray.Substring(i, endObject - i + 1);
-            i = endObject;
-        }
-    }
-
-    private static bool TryReadJsonString(string json, int quoteIndex, out string value, out int endQuote)
-    {
-        value = null;
-        endQuote = -1;
-        if (quoteIndex < 0 || quoteIndex >= json.Length || json[quoteIndex] != '"')
-            return false;
-
-        var builder = new StringBuilder();
-        for (var i = quoteIndex + 1; i < json.Length; i++)
-        {
-            var c = json[i];
-            if (c == '"')
-            {
-                value = builder.ToString();
-                endQuote = i;
-                return true;
-            }
-
-            if (c != '\\')
+            var c = value[i];
+            if (c != '\\' || i + 1 >= value.Length)
             {
                 builder.Append(c);
                 continue;
             }
 
-            if (++i >= json.Length)
-                return false;
-
-            c = json[i];
+            c = value[++i];
             switch (c)
             {
                 case '"': builder.Append('"'); break;
@@ -597,28 +550,40 @@ internal static class RainwaveRadio
                 case 'r': builder.Append('\r'); break;
                 case 't': builder.Append('\t'); break;
                 case 'u':
-                    if (i + 4 >= json.Length)
-                        return false;
-                    int code;
-                    if (!int.TryParse(json.Substring(i + 1, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out code))
-                        return false;
-                    builder.Append((char)code);
-                    i += 4;
+                    if (i + 4 < value.Length)
+                    {
+                        int code;
+                        if (int.TryParse(value.Substring(i + 1, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out code))
+                        {
+                            builder.Append((char)code);
+                            i += 4;
+                            break;
+                        }
+                    }
+                    builder.Append('u');
                     break;
                 default:
                     builder.Append(c);
                     break;
             }
         }
-
-        return false;
+        return builder.ToString();
     }
 
-    private static int SkipWhitespace(string text, int index)
+    private static string DownloadText(string url, int timeoutMilliseconds)
     {
-        while (index < text.Length && char.IsWhiteSpace(text[index]))
-            index++;
-        return index;
+        var request = (HttpWebRequest)WebRequest.Create(url);
+        request.Method = "GET";
+        request.UserAgent = "gloader-rainwave-radio/0.2";
+        request.Accept = "*/*";
+        request.Timeout = timeoutMilliseconds;
+        request.ReadWriteTimeout = timeoutMilliseconds;
+        request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+
+        using (var response = (HttpWebResponse)request.GetResponse())
+        using (var stream = response.GetResponseStream())
+        using (var reader = new StreamReader(stream, Encoding.UTF8, true))
+            return reader.ReadToEnd();
     }
 
     private static void SetNowPlaying(string display)
@@ -656,7 +621,10 @@ internal static class RainwaveRadio
             _stopMethod = dynamicType.GetMethod("Stop", Type.EmptyTypes);
             _disposeMethod = dynamicType.GetMethod("Dispose", Type.EmptyTypes);
 
-            if (_soundVolumeProperty == null || _pendingBufferCountProperty == null || _submitBufferMethod == null || _playMethod == null)
+            if (_soundVolumeProperty == null ||
+                _pendingBufferCountProperty == null ||
+                _submitBufferMethod == null ||
+                _playMethod == null)
                 DisposeDynamicSound();
         }
         catch
@@ -669,7 +637,10 @@ internal static class RainwaveRadio
     {
         try
         {
-            var pending = Convert.ToInt32(_pendingBufferCountProperty.GetValue(_dynamicSound, null), CultureInfo.InvariantCulture);
+            var pending = Convert.ToInt32(
+                _pendingBufferCountProperty.GetValue(_dynamicSound, null),
+                CultureInfo.InvariantCulture);
+
             while (pending < DesiredPendingBuffers)
             {
                 byte[] chunk;
@@ -680,12 +651,15 @@ internal static class RainwaveRadio
                 pending++;
             }
 
-            if (pending >= 2)
-            {
-                var state = _soundStateProperty == null ? null : _soundStateProperty.GetValue(_dynamicSound, null);
-                if (state == null || !string.Equals(state.ToString(), "Playing", StringComparison.OrdinalIgnoreCase))
-                    _playMethod.Invoke(_dynamicSound, null);
-            }
+            if (pending < 2)
+                return;
+
+            var state = _soundStateProperty == null
+                ? null
+                : _soundStateProperty.GetValue(_dynamicSound, null);
+
+            if (state == null || !string.Equals(state.ToString(), "Playing", StringComparison.OrdinalIgnoreCase))
+                _playMethod.Invoke(_dynamicSound, null);
         }
         catch
         {
@@ -700,7 +674,7 @@ internal static class RainwaveRadio
 
         try
         {
-            _soundVolumeProperty.SetValue(_dynamicSound, volume, null);
+            _soundVolumeProperty.SetValue(_dynamicSound, Clamp01(volume), null);
         }
         catch
         {
@@ -810,26 +784,28 @@ internal static class RainwaveRadio
         if (font == null)
             return;
 
-        var screenHeight = screenHeightField == null ? 720 : Convert.ToInt32(screenHeightField.GetValue(null), CultureInfo.InvariantCulture);
-        var y = Math.Max(20f, screenHeight - 92f);
-        var position = Activator.CreateInstance(vector2Type, new object[] { 20f, y });
+        var screenHeight = screenHeightField == null
+            ? 720
+            : Convert.ToInt32(screenHeightField.GetValue(null), CultureInfo.InvariantCulture);
+        var position = Activator.CreateInstance(vector2Type, new object[] { 20f, Math.Max(20f, screenHeight - 92f) });
         var zero = GetStaticMember(vector2Type, "Zero");
         var one = GetStaticMember(vector2Type, "One");
 
-        var baseBrightness = 255;
+        var brightness = 255;
         if (mouseTextColorField != null)
         {
-            try { baseBrightness = Convert.ToInt32(mouseTextColorField.GetValue(null), CultureInfo.InvariantCulture); }
+            try { brightness = Convert.ToInt32(mouseTextColorField.GetValue(null), CultureInfo.InvariantCulture); }
             catch { }
         }
-        baseBrightness = Math.Max(0, Math.Min(255, baseBrightness));
+        brightness = Math.Max(0, Math.Min(255, brightness));
         var a = Math.Max(0, Math.Min(255, (int)Math.Round(255.0 * alpha)));
-        var color = CreateColor(colorType, baseBrightness, baseBrightness, baseBrightness, a);
+        var color = CreateColor(colorType, brightness, brightness, brightness, a);
         if (color == null || zero == null || one == null)
             return;
 
         var draw = chatManagerType.GetMethods(BindingFlags.Static | BindingFlags.Public)
-            .FirstOrDefault(method => method.Name == "DrawColorCodedStringWithShadow" && method.GetParameters().Length == 10);
+            .FirstOrDefault(method =>
+                method.Name == "DrawColorCodedStringWithShadow" && method.GetParameters().Length == 10);
         if (draw == null)
             return;
 
@@ -853,6 +829,7 @@ internal static class RainwaveRadio
         var field = type.GetField(name, BindingFlags.Static | BindingFlags.Public);
         if (field != null)
             return field.GetValue(null);
+
         var property = type.GetProperty(name, BindingFlags.Static | BindingFlags.Public);
         return property == null ? null : property.GetValue(null, null);
     }
