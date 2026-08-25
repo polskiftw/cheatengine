@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <DefineConstants>GLOADER;GLOADER_SERVER</DefineConstants>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Mods\NoLiquidDupe.cs" Link="NoLiquidDupe.cs" />
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="All" />
+  </ItemGroup>
+</Project>
