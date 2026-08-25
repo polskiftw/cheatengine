@@ -5,19 +5,48 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using Terraria;
-using Terraria.Localization;
 
 public static class Mod
 {
     public static void Load()
     {
         InfiniteAnglerRuntime.Initialize();
-        Console.WriteLine("[Infinite Angler] Server-side endless Angler quests enabled.");
+        Console.WriteLine("[Infinite Angler] Shared endless Angler quests enabled.");
+    }
+}
+
+// Vanilla calls Main.AnglerQuestSwap() at dawn. We suppress only that automatic
+// invocation; quest changes are driven exclusively by the completion rule below.
+[HarmonyPatch]
+internal static class InfiniteAnglerDawnPatch
+{
+    private static MethodBase TargetMethod()
+    {
+        return InfiniteAnglerRuntime.UpdateTimeMethod;
+    }
+
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+    {
+        var swap = InfiniteAnglerRuntime.AnglerQuestSwapMethod;
+
+        foreach (var instruction in instructions)
+        {
+            if (instruction.Calls(swap))
+            {
+                // Preserve the surrounding vanilla time/day transition while removing
+                // only the automatic Angler quest reset.
+                yield return new CodeInstruction(OpCodes.Nop);
+            }
+            else
+            {
+                yield return instruction;
+            }
+        }
     }
 }
 
 [HarmonyPatch]
-internal static class InfiniteAnglerMessagePatch
+internal static class InfiniteAnglerCompletionPatch
 {
     private static MethodBase TargetMethod()
     {
@@ -40,37 +69,39 @@ internal static class InfiniteAnglerMessagePatch
 internal static class InfiniteAnglerRuntime
 {
     private static FieldInfo _netMode;
-    private static FieldInfo _anglerQuest;
-    private static FieldInfo _anglerQuestFinished;
     private static FieldInfo _finishedToday;
     private static FieldInfo _players;
     private static FieldInfo _readBuffer;
     private static FieldInfo _whoAmI;
-    private static MethodInfo _anglerQuestSwap;
-    private static MethodInfo _sendData;
-    private static MethodInfo _fromLiteral;
-    private static int _anglerQuestMessageId;
     private static int _anglerQuestFinishedMessageId;
 
     public static MethodBase GetDataMethod { get; private set; }
+    public static MethodBase UpdateTimeMethod { get; private set; }
+    public static MethodInfo AnglerQuestSwapMethod { get; private set; }
 
     public static void Initialize()
     {
         _netMode = RequireField(typeof(Main), "netMode", typeof(int));
-        _anglerQuest = RequireField(typeof(Main), "anglerQuest", typeof(int));
-        _anglerQuestFinished = RequireField(typeof(Main), "anglerQuestFinished", typeof(bool));
         _finishedToday = RequireField(typeof(Main), "anglerWhoFinishedToday", null);
         _players = RequireField(typeof(Main), "player", null);
         _readBuffer = RequireField(typeof(MessageBuffer), "readBuffer", typeof(byte[]));
         _whoAmI = RequireField(typeof(MessageBuffer), "whoAmI", typeof(int));
 
-        _anglerQuestSwap = typeof(Main)
+        AnglerQuestSwapMethod = typeof(Main)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
             .SingleOrDefault(method =>
                 method.Name == "AnglerQuestSwap" &&
                 method.ReturnType == typeof(void) &&
                 method.GetParameters().Length == 0)
             ?? throw new MissingMethodException(typeof(Main).FullName, "AnglerQuestSwap()");
+
+        UpdateTimeMethod = typeof(Main)
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .SingleOrDefault(method =>
+                method.Name == "UpdateTime" &&
+                method.ReturnType == typeof(void) &&
+                method.GetParameters().Length == 0)
+            ?? throw new MissingMethodException(typeof(Main).FullName, "UpdateTime()");
 
         GetDataMethod = typeof(MessageBuffer)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -91,59 +122,7 @@ internal static class InfiniteAnglerRuntime
             ?? throw new MissingMethodException(typeof(MessageBuffer).FullName, "GetData(int start, int length, ...)");
 
         var messageIdType = typeof(Main).Assembly.GetType("Terraria.ID.MessageID", throwOnError: true);
-        _anglerQuestMessageId = ReadConstantInt(messageIdType, "AnglerQuest");
         _anglerQuestFinishedMessageId = ReadConstantInt(messageIdType, "AnglerQuestFinished");
-        var questsCountSync = ReadConstantInt(messageIdType, "QuestsCountSync");
-
-        if (_anglerQuestMessageId == _anglerQuestFinishedMessageId ||
-            _anglerQuestMessageId == questsCountSync ||
-            _anglerQuestFinishedMessageId == questsCountSync)
-        {
-            throw new InvalidOperationException("Angler network message IDs are no longer distinct.");
-        }
-
-        _fromLiteral = typeof(NetworkText)
-            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            .SingleOrDefault(method =>
-            {
-                var parameters = method.GetParameters();
-                return method.Name == "FromLiteral" &&
-                       method.ReturnType == typeof(NetworkText) &&
-                       parameters.Length == 1 &&
-                       parameters[0].ParameterType == typeof(string);
-            })
-            ?? throw new MissingMethodException(typeof(NetworkText).FullName, "FromLiteral(string)");
-
-        var netMessageType = typeof(Main).Assembly.GetType("Terraria.NetMessage", throwOnError: true);
-        var sendCandidates = netMessageType
-            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            .Where(method =>
-            {
-                if (method.Name != "SendData" || method.ReturnType != typeof(void))
-                {
-                    return false;
-                }
-
-                var parameters = method.GetParameters();
-                return parameters.Length >= 4 &&
-                       parameters[0].ParameterType == typeof(int) &&
-                       parameters[1].ParameterType == typeof(int) &&
-                       parameters[2].ParameterType == typeof(int) &&
-                       parameters[3].ParameterType == typeof(NetworkText) &&
-                       parameters.Skip(4).All(parameter =>
-                           parameter.ParameterType == typeof(int) ||
-                           parameter.ParameterType == typeof(float));
-            })
-            .ToArray();
-
-        if (sendCandidates.Length != 1)
-        {
-            throw new InvalidOperationException(
-                "Expected exactly one compatible Terraria.NetMessage.SendData overload, found " +
-                sendCandidates.Length + ".");
-        }
-
-        _sendData = sendCandidates[0];
 
         if (!typeof(IList<string>).IsAssignableFrom(_finishedToday.FieldType))
         {
@@ -164,7 +143,7 @@ internal static class InfiniteAnglerRuntime
             return true;
         }
 
-        if (!TryGetPlayerName(messageBuffer, out var name))
+        if (!TryGetPlayer(messageBuffer, out var player, out var name))
         {
             return true;
         }
@@ -179,7 +158,7 @@ internal static class InfiniteAnglerRuntime
             return;
         }
 
-        if (!TryGetPlayerName(messageBuffer, out var name))
+        if (!TryGetPlayer(messageBuffer, out _, out var name))
         {
             return;
         }
@@ -187,66 +166,55 @@ internal static class InfiniteAnglerRuntime
         var finishedToday = GetFinishedToday();
         if (!finishedToday.Contains(name))
         {
-            // Vanilla did not accept this as a successful quest completion.
+            // Vanilla rejected the packet, so this was not a successful quest turn-in.
             return;
         }
 
-        var whoAmI = (int)_whoAmI.GetValue(messageBuffer);
-        var oldQuest = (int)_anglerQuest.GetValue(null);
-        var oldQuestFinished = (bool)_anglerQuestFinished.GetValue(null);
-        var oldNetMode = GetNetMode();
-        var removedCompletion = false;
-
-        try
+        if (!AllConnectedPlayersFinished(finishedToday))
         {
-            removedCompletion = finishedToday.Remove(name);
-            if (!removedCompletion)
+            return;
+        }
+
+        // Let vanilla perform one ordinary global quest swap. This resets the
+        // completion list and broadcasts the next quest to all connected clients.
+        AnglerQuestSwapMethod.Invoke(null, null);
+    }
+
+    private static bool AllConnectedPlayersFinished(IList<string> finishedToday)
+    {
+        var players = (Array)_players.GetValue(null);
+        var anyConnected = false;
+
+        for (var index = 0; index < players.Length; index++)
+        {
+            var player = players.GetValue(index);
+            if (player == null || !IsActive(player))
             {
-                return;
+                continue;
             }
 
-            // Ask vanilla to pick the next valid Angler quest, but temporarily use
-            // single-player net mode so AnglerQuestSwap does not broadcast it to
-            // every connected player.
-            _netMode.SetValue(null, 0);
-            _anglerQuestSwap.Invoke(null, null);
-            _netMode.SetValue(null, oldNetMode);
-
-            // NetMessage.SendData serializes Main.anglerQuest and the per-name
-            // completion state. At this moment the new quest is selected and this
-            // player's completion marker is absent, so the unmodified client sees
-            // a fresh, incomplete quest. Only the completing player receives it.
-            var parameters = _sendData.GetParameters();
-            var arguments = new object[parameters.Length];
-            arguments[0] = _anglerQuestMessageId;
-            arguments[1] = whoAmI;
-            arguments[2] = -1;
-            arguments[3] = _fromLiteral.Invoke(null, new object[] { name });
-
-            for (var index = 4; index < parameters.Length; index++)
+            anyConnected = true;
+            var name = GetPlayerName(player);
+            if (string.IsNullOrEmpty(name) || !finishedToday.Contains(name))
             {
-                arguments[index] = parameters[index].ParameterType == typeof(float) ? (object)0f : 0;
+                return false;
             }
+        }
 
-            _sendData.Invoke(null, arguments);
-        }
-        catch (Exception ex)
-        {
-            // Fall back toward vanilla state if our private reroll fails. Do not let
-            // a mod-side compatibility problem kill the server's packet loop.
-            if (removedCompletion && !finishedToday.Contains(name))
-            {
-                finishedToday.Add(name);
-            }
+        return anyConnected;
+    }
 
-            Console.Error.WriteLine("[Infinite Angler] Quest reroll failed: " + Unwrap(ex));
-        }
-        finally
+    private static bool IsActive(object player)
+    {
+        var activeField = AccessTools.Field(player.GetType(), "active")
+                          ?? throw new MissingFieldException(player.GetType().FullName, "active");
+
+        if (activeField.FieldType != typeof(bool))
         {
-            _netMode.SetValue(null, oldNetMode);
-            _anglerQuest.SetValue(null, oldQuest);
-            _anglerQuestFinished.SetValue(null, oldQuestFinished);
+            throw new InvalidOperationException(player.GetType().FullName + ".active is no longer bool.");
         }
+
+        return (bool)activeField.GetValue(player);
     }
 
     private static bool IsCompletionPacket(object messageBuffer, int start)
@@ -258,8 +226,9 @@ internal static class InfiniteAnglerRuntime
                buffer[start] == (byte)_anglerQuestFinishedMessageId;
     }
 
-    private static bool TryGetPlayerName(object messageBuffer, out string name)
+    private static bool TryGetPlayer(object messageBuffer, out object player, out string name)
     {
+        player = null;
         name = null;
 
         var whoAmI = (int)_whoAmI.GetValue(messageBuffer);
@@ -269,20 +238,27 @@ internal static class InfiniteAnglerRuntime
             return false;
         }
 
-        var player = players.GetValue(whoAmI);
-        if (player == null)
+        player = players.GetValue(whoAmI);
+        if (player == null || !IsActive(player))
         {
             return false;
         }
 
-        var nameField = AccessTools.Field(player.GetType(), "name");
-        if (nameField == null || nameField.FieldType != typeof(string))
-        {
-            return false;
-        }
-
-        name = nameField.GetValue(player) as string;
+        name = GetPlayerName(player);
         return !string.IsNullOrEmpty(name);
+    }
+
+    private static string GetPlayerName(object player)
+    {
+        var nameField = AccessTools.Field(player.GetType(), "name")
+                        ?? throw new MissingFieldException(player.GetType().FullName, "name");
+
+        if (nameField.FieldType != typeof(string))
+        {
+            throw new InvalidOperationException(player.GetType().FullName + ".name is no longer string.");
+        }
+
+        return nameField.GetValue(player) as string;
     }
 
     private static IList<string> GetFinishedToday()
@@ -320,22 +296,10 @@ internal static class InfiniteAnglerRuntime
         var value = field.IsLiteral ? field.GetRawConstantValue() : field.GetValue(null);
         return Convert.ToInt32(value);
     }
-
-    private static Exception Unwrap(Exception exception)
-    {
-        while (exception is TargetInvocationException invocation && invocation.InnerException != null)
-        {
-            exception = invocation.InnerException;
-        }
-
-        return exception;
-    }
 }
 #else
-// Infinite Angler is intentionally server-authoritative. When gloader starts the
-// visible Terraria client this source compiles to a no-op. Host & Play automatically
-// launches a second gloader instance for TerrariaServer.exe, where the server half
-// above is compiled and applied. Joining clients remain completely vanilla.
+// Infinite Angler is server-authoritative. Host & Play runs the server-side patch
+// in TerrariaServer.exe; joining clients require no gloader mod of their own.
 public static class Mod
 {
     public static void Load()
