@@ -16,15 +16,10 @@ public static class Mod
     }
 }
 
-// Vanilla's dawn transition resets the Angler quest. Remove only the Angler reset
-// call; the quest now advances exclusively when all connected players finish it.
 [HarmonyPatch]
 internal static class InfiniteAnglerDawnPatch
 {
-    private static MethodBase TargetMethod()
-    {
-        return InfiniteAnglerRuntime.UpdateTimeMethod;
-    }
+    private static MethodBase TargetMethod() => InfiniteAnglerRuntime.UpdateTimeMethod;
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
@@ -44,49 +39,32 @@ internal static class InfiniteAnglerDawnPatch
         }
 
         if (removed != 1)
-        {
             throw new InvalidOperationException(
                 "Expected exactly one Main.AnglerQuestSwap() call in Main.UpdateTime(), found " + removed + ".");
-        }
     }
 }
 
-// Re-evaluate every server tick so a disconnect immediately stops counting toward
-// the current round. After a quest swap the completion list is empty, so this is inert.
 [HarmonyPatch]
 internal static class InfiniteAnglerTickPatch
 {
-    private static MethodBase TargetMethod()
-    {
-        return InfiniteAnglerRuntime.UpdateTimeMethod;
-    }
+    private static MethodBase TargetMethod() => InfiniteAnglerRuntime.UpdateTimeMethod;
 
     [HarmonyPostfix]
-    private static void Postfix()
-    {
-        InfiniteAnglerRuntime.TryAdvanceQuest();
-    }
+    private static void Postfix() => InfiniteAnglerRuntime.TryAdvanceQuest();
 }
 
 [HarmonyPatch]
 internal static class InfiniteAnglerCompletionPatch
 {
-    private static MethodBase TargetMethod()
-    {
-        return InfiniteAnglerRuntime.GetDataMethod;
-    }
+    private static MethodBase TargetMethod() => InfiniteAnglerRuntime.GetDataMethod;
 
     [HarmonyPrefix]
     private static void Prefix(object __instance, int start, ref bool __state)
-    {
-        __state = InfiniteAnglerRuntime.WasAlreadyFinished(__instance, start);
-    }
+        => __state = InfiniteAnglerRuntime.WasAlreadyFinished(__instance, start);
 
     [HarmonyPostfix]
     private static void Postfix(object __instance, int start, bool __state)
-    {
-        InfiniteAnglerRuntime.AfterGetData(__instance, start, __state);
-    }
+        => InfiniteAnglerRuntime.AfterGetData(__instance, start, __state);
 }
 
 internal static class InfiniteAnglerRuntime
@@ -113,33 +91,23 @@ internal static class InfiniteAnglerRuntime
 
         AnglerQuestSwapMethod = typeof(Main)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            .SingleOrDefault(method =>
-                method.Name == "AnglerQuestSwap" &&
-                method.ReturnType == typeof(void) &&
-                method.GetParameters().Length == 0)
+            .SingleOrDefault(method => method.Name == "AnglerQuestSwap" && method.ReturnType == typeof(void) && method.GetParameters().Length == 0)
             ?? throw new MissingMethodException(typeof(Main).FullName, "AnglerQuestSwap()");
 
         UpdateTimeMethod = typeof(Main)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            .SingleOrDefault(method =>
-                method.Name == "UpdateTime" &&
-                method.ReturnType == typeof(void) &&
-                method.GetParameters().Length == 0)
+            .SingleOrDefault(method => method.Name == "UpdateTime" && method.ReturnType == typeof(void) && method.GetParameters().Length == 0)
             ?? throw new MissingMethodException(typeof(Main).FullName, "UpdateTime()");
 
         GetDataMethod = typeof(MessageBuffer)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .SingleOrDefault(method =>
             {
-                if (method.Name != "GetData")
-                    return false;
-
+                if (method.Name != "GetData") return false;
                 var parameters = method.GetParameters();
                 return parameters.Length >= 2 &&
-                       parameters[0].Name == "start" &&
-                       parameters[0].ParameterType == typeof(int) &&
-                       parameters[1].Name == "length" &&
-                       parameters[1].ParameterType == typeof(int);
+                       parameters[0].Name == "start" && parameters[0].ParameterType == typeof(int) &&
+                       parameters[1].Name == "length" && parameters[1].ParameterType == typeof(int);
             })
             ?? throw new MissingMethodException(typeof(MessageBuffer).FullName, "GetData(int start, int length, ...)");
 
@@ -157,10 +125,8 @@ internal static class InfiniteAnglerRuntime
     {
         if (!IsCompletionPacket(messageBuffer, start) || GetNetMode() != 2)
             return true;
-
         if (!TryGetPlayer(messageBuffer, out _, out var name))
             return true;
-
         return GetFinishedToday().Contains(name);
     }
 
@@ -168,14 +134,10 @@ internal static class InfiniteAnglerRuntime
     {
         if (wasAlreadyFinished || !IsCompletionPacket(messageBuffer, start) || GetNetMode() != 2)
             return;
-
         if (!TryGetPlayer(messageBuffer, out _, out var name))
             return;
-
-        var finishedToday = GetFinishedToday();
-        if (!finishedToday.Contains(name))
+        if (!GetFinishedToday().Contains(name))
             return;
-
         TryAdvanceQuest();
     }
 
@@ -210,7 +172,6 @@ internal static class InfiniteAnglerRuntime
             return false;
 
         var anyConnected = false;
-
         for (var index = 0; index < players.Length; index++)
         {
             var player = players.GetValue(index);
@@ -230,20 +191,15 @@ internal static class InfiniteAnglerRuntime
     {
         var activeField = AccessTools.Field(player.GetType(), "active")
                           ?? throw new MissingFieldException(player.GetType().FullName, "active");
-
         if (activeField.FieldType != typeof(bool))
             throw new InvalidOperationException(player.GetType().FullName + ".active is no longer bool.");
-
         return (bool)activeField.GetValue(player);
     }
 
     private static bool IsCompletionPacket(object messageBuffer, int start)
     {
         var buffer = (byte[])_readBuffer.GetValue(messageBuffer);
-        return buffer != null &&
-               start >= 0 &&
-               start < buffer.Length &&
-               buffer[start] == (byte)_anglerQuestFinishedMessageId;
+        return buffer != null && start >= 0 && start < buffer.Length && buffer[start] == (byte)_anglerQuestFinishedMessageId;
     }
 
     private static bool TryGetPlayer(object messageBuffer, out object player, out string name)
@@ -268,35 +224,19 @@ internal static class InfiniteAnglerRuntime
     {
         var nameField = AccessTools.Field(player.GetType(), "name")
                         ?? throw new MissingFieldException(player.GetType().FullName, "name");
-
         if (nameField.FieldType != typeof(string))
             throw new InvalidOperationException(player.GetType().FullName + ".name is no longer string.");
-
         return nameField.GetValue(player) as string;
     }
 
-    private static IList<string> GetFinishedToday()
-    {
-        return (IList<string>)_finishedToday.GetValue(null);
-    }
-
-    private static int GetNetMode()
-    {
-        return (int)_netMode.GetValue(null);
-    }
+    private static IList<string> GetFinishedToday() => (IList<string>)_finishedToday.GetValue(null);
+    private static int GetNetMode() => (int)_netMode.GetValue(null);
 
     private static FieldInfo RequireField(Type type, string name, Type expectedType)
     {
-        var field = AccessTools.Field(type, name)
-                    ?? throw new MissingFieldException(type.FullName, name);
-
+        var field = AccessTools.Field(type, name) ?? throw new MissingFieldException(type.FullName, name);
         if (expectedType != null && field.FieldType != expectedType)
-        {
-            throw new InvalidOperationException(
-                type.FullName + "." + name + " changed type from " +
-                expectedType.FullName + " to " + field.FieldType.FullName + ".");
-        }
-
+            throw new InvalidOperationException(type.FullName + "." + name + " changed type from " + expectedType.FullName + " to " + field.FieldType.FullName + ".");
         return field;
     }
 
@@ -304,7 +244,6 @@ internal static class InfiniteAnglerRuntime
     {
         var field = type.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                     ?? throw new MissingFieldException(type.FullName, name);
-
         var value = field.IsLiteral ? field.GetRawConstantValue() : field.GetValue(null);
         return Convert.ToInt32(value);
     }
@@ -313,15 +252,12 @@ internal static class InfiniteAnglerRuntime
     {
         while (exception is TargetInvocationException invocation && invocation.InnerException != null)
             exception = invocation.InnerException;
-
         return exception;
     }
 }
 #else
 public static class Mod
 {
-    public static void Load()
-    {
-    }
+    public static void Load() { }
 }
 #endif
