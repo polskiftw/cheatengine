@@ -16,8 +16,8 @@ public static class Mod
     }
 }
 
-// Vanilla's dawn transition resets the Angler quest. We remove only the Angler
-// reset sequence and leave the rest of Main.UpdateTime() untouched.
+// Vanilla's dawn transition resets the Angler quest. Remove only the Angler reset
+// call; the quest now advances exclusively when all connected players finish it.
 [HarmonyPatch]
 internal static class InfiniteAnglerDawnPatch
 {
@@ -28,84 +28,31 @@ internal static class InfiniteAnglerDawnPatch
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
-        var list = instructions.ToList();
         var swap = InfiniteAnglerRuntime.AnglerQuestSwapMethod;
-        var finishedField = InfiniteAnglerRuntime.FinishedTodayField;
-        var swapIndex = list.FindIndex(instruction => instruction.Calls(swap));
+        var removed = 0;
 
-        if (swapIndex < 0)
+        foreach (var instruction in instructions)
         {
-            throw new InvalidOperationException("Main.UpdateTime() no longer calls Main.AnglerQuestSwap().");
-        }
-
-        if (list.Skip(swapIndex + 1).Any(instruction => instruction.Calls(swap)))
-        {
-            throw new InvalidOperationException("Main.UpdateTime() now contains multiple AnglerQuestSwap() calls.");
-        }
-
-        // Terraria's dawn reset consists of clearing anglerWhoFinishedToday and
-        // calling AnglerQuestSwap(). Locate the clear immediately around that call
-        // and suppress both operations. This preserves completion state across days.
-        var clearIndex = FindFinishedTodayClear(list, swapIndex, finishedField);
-        SuppressCall(list[swapIndex]);
-        SuppressCall(list[clearIndex]);
-
-        return list;
-    }
-
-    private static int FindFinishedTodayClear(List<CodeInstruction> list, int swapIndex, FieldInfo finishedField)
-    {
-        var start = Math.Max(0, swapIndex - 12);
-        var end = Math.Min(list.Count - 1, swapIndex + 12);
-
-        for (var index = start; index <= end; index++)
-        {
-            if (!CallsClear(list[index]))
+            if (instruction.Calls(swap))
             {
-                continue;
+                instruction.opcode = OpCodes.Nop;
+                instruction.operand = null;
+                removed++;
             }
 
-            for (var previous = index - 1; previous >= Math.Max(start, index - 4); previous--)
-            {
-                if (list[previous].LoadsField(finishedField))
-                {
-                    return index;
-                }
-            }
+            yield return instruction;
         }
 
-        throw new InvalidOperationException(
-            "Could not identify vanilla's anglerWhoFinishedToday.Clear() near AnglerQuestSwap().");
-    }
-
-    private static bool CallsClear(CodeInstruction instruction)
-    {
-        return instruction.operand is MethodInfo method &&
-               method.Name == "Clear" &&
-               method.GetParameters().Length == 0 &&
-               typeof(IList<string>).IsAssignableFrom(method.DeclaringType);
-    }
-
-    private static void SuppressCall(CodeInstruction instruction)
-    {
-        // Nopping only the call would leave its instance on the evaluation stack for
-        // IList.Clear(). Pop consumes that instance; the static AnglerQuestSwap call
-        // has no arguments, so Nop is correct there.
-        if (CallsClear(instruction))
+        if (removed != 1)
         {
-            instruction.opcode = OpCodes.Pop;
+            throw new InvalidOperationException(
+                "Expected exactly one Main.AnglerQuestSwap() call in Main.UpdateTime(), found " + removed + ".");
         }
-        else
-        {
-            instruction.opcode = OpCodes.Nop;
-        }
-
-        instruction.operand = null;
     }
 }
 
-// Re-evaluate every server tick so disconnecting players stop blocking the group
-// immediately. After a swap the vanilla completion list is empty, so this is inert.
+// Re-evaluate every server tick so a disconnect immediately stops counting toward
+// the current round. After a quest swap the completion list is empty, so this is inert.
 [HarmonyPatch]
 internal static class InfiniteAnglerTickPatch
 {
@@ -145,13 +92,13 @@ internal static class InfiniteAnglerCompletionPatch
 internal static class InfiniteAnglerRuntime
 {
     private static FieldInfo _netMode;
+    private static FieldInfo _finishedToday;
     private static FieldInfo _players;
     private static FieldInfo _readBuffer;
     private static FieldInfo _whoAmI;
     private static int _anglerQuestFinishedMessageId;
     private static bool _advancing;
 
-    public static FieldInfo FinishedTodayField { get; private set; }
     public static MethodBase GetDataMethod { get; private set; }
     public static MethodBase UpdateTimeMethod { get; private set; }
     public static MethodInfo AnglerQuestSwapMethod { get; private set; }
@@ -159,7 +106,7 @@ internal static class InfiniteAnglerRuntime
     public static void Initialize()
     {
         _netMode = RequireField(typeof(Main), "netMode", typeof(int));
-        FinishedTodayField = RequireField(typeof(Main), "anglerWhoFinishedToday", null);
+        _finishedToday = RequireField(typeof(Main), "anglerWhoFinishedToday", null);
         _players = RequireField(typeof(Main), "player", null);
         _readBuffer = RequireField(typeof(MessageBuffer), "readBuffer", typeof(byte[]));
         _whoAmI = RequireField(typeof(MessageBuffer), "whoAmI", typeof(int));
@@ -185,9 +132,7 @@ internal static class InfiniteAnglerRuntime
             .SingleOrDefault(method =>
             {
                 if (method.Name != "GetData")
-                {
                     return false;
-                }
 
                 var parameters = method.GetParameters();
                 return parameters.Length >= 2 &&
@@ -201,29 +146,20 @@ internal static class InfiniteAnglerRuntime
         var messageIdType = typeof(Main).Assembly.GetType("Terraria.ID.MessageID", throwOnError: true);
         _anglerQuestFinishedMessageId = ReadConstantInt(messageIdType, "AnglerQuestFinished");
 
-        if (!typeof(IList<string>).IsAssignableFrom(FinishedTodayField.FieldType))
-        {
-            throw new InvalidOperationException(
-                "Main.anglerWhoFinishedToday is no longer an IList<string>.");
-        }
+        if (!typeof(IList<string>).IsAssignableFrom(_finishedToday.FieldType))
+            throw new InvalidOperationException("Main.anglerWhoFinishedToday is no longer an IList<string>.");
 
         if (!_players.FieldType.IsArray)
-        {
             throw new InvalidOperationException("Main.player is no longer an array.");
-        }
     }
 
     public static bool WasAlreadyFinished(object messageBuffer, int start)
     {
         if (!IsCompletionPacket(messageBuffer, start) || GetNetMode() != 2)
-        {
             return true;
-        }
 
         if (!TryGetPlayer(messageBuffer, out _, out var name))
-        {
             return true;
-        }
 
         return GetFinishedToday().Contains(name);
     }
@@ -231,20 +167,14 @@ internal static class InfiniteAnglerRuntime
     public static void AfterGetData(object messageBuffer, int start, bool wasAlreadyFinished)
     {
         if (wasAlreadyFinished || !IsCompletionPacket(messageBuffer, start) || GetNetMode() != 2)
-        {
             return;
-        }
 
         if (!TryGetPlayer(messageBuffer, out _, out var name))
-        {
             return;
-        }
 
         var finishedToday = GetFinishedToday();
         if (!finishedToday.Contains(name))
-        {
             return;
-        }
 
         TryAdvanceQuest();
     }
@@ -252,15 +182,11 @@ internal static class InfiniteAnglerRuntime
     public static void TryAdvanceQuest()
     {
         if (_advancing || GetNetMode() != 2)
-        {
             return;
-        }
 
         var finishedToday = GetFinishedToday();
         if (!AllConnectedPlayersFinished(finishedToday))
-        {
             return;
-        }
 
         try
         {
@@ -281,9 +207,7 @@ internal static class InfiniteAnglerRuntime
     {
         var players = (Array)_players.GetValue(null);
         if (players == null)
-        {
             return false;
-        }
 
         var anyConnected = false;
 
@@ -291,16 +215,12 @@ internal static class InfiniteAnglerRuntime
         {
             var player = players.GetValue(index);
             if (player == null || !IsActive(player))
-            {
                 continue;
-            }
 
             anyConnected = true;
             var name = GetPlayerName(player);
             if (string.IsNullOrEmpty(name) || !finishedToday.Contains(name))
-            {
                 return false;
-            }
         }
 
         return anyConnected;
@@ -312,9 +232,7 @@ internal static class InfiniteAnglerRuntime
                           ?? throw new MissingFieldException(player.GetType().FullName, "active");
 
         if (activeField.FieldType != typeof(bool))
-        {
             throw new InvalidOperationException(player.GetType().FullName + ".active is no longer bool.");
-        }
 
         return (bool)activeField.GetValue(player);
     }
@@ -336,15 +254,11 @@ internal static class InfiniteAnglerRuntime
         var whoAmI = (int)_whoAmI.GetValue(messageBuffer);
         var players = (Array)_players.GetValue(null);
         if (players == null || whoAmI < 0 || whoAmI >= players.Length)
-        {
             return false;
-        }
 
         player = players.GetValue(whoAmI);
         if (player == null || !IsActive(player))
-        {
             return false;
-        }
 
         name = GetPlayerName(player);
         return !string.IsNullOrEmpty(name);
@@ -356,16 +270,14 @@ internal static class InfiniteAnglerRuntime
                         ?? throw new MissingFieldException(player.GetType().FullName, "name");
 
         if (nameField.FieldType != typeof(string))
-        {
             throw new InvalidOperationException(player.GetType().FullName + ".name is no longer string.");
-        }
 
         return nameField.GetValue(player) as string;
     }
 
     private static IList<string> GetFinishedToday()
     {
-        return (IList<string>)FinishedTodayField.GetValue(null);
+        return (IList<string>)_finishedToday.GetValue(null);
     }
 
     private static int GetNetMode()
@@ -390,10 +302,8 @@ internal static class InfiniteAnglerRuntime
 
     private static int ReadConstantInt(Type type, string name)
     {
-        var field = type.GetField(
-            name,
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new MissingFieldException(type.FullName, name);
+        var field = type.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                    ?? throw new MissingFieldException(type.FullName, name);
 
         var value = field.IsLiteral ? field.GetRawConstantValue() : field.GetValue(null);
         return Convert.ToInt32(value);
@@ -402,9 +312,7 @@ internal static class InfiniteAnglerRuntime
     private static Exception Unwrap(Exception exception)
     {
         while (exception is TargetInvocationException invocation && invocation.InnerException != null)
-        {
             exception = invocation.InnerException;
-        }
 
         return exception;
     }
