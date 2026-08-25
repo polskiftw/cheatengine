@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using Terraria;
 
@@ -15,8 +16,8 @@ public static class Mod
     }
 }
 
-// Vanilla calls Main.AnglerQuestSwap() at dawn. We suppress only that automatic
-// invocation; quest changes are driven exclusively by the completion rule below.
+// Vanilla calls Main.AnglerQuestSwap() from Main.UpdateTime() when a new day starts.
+// Remove only that automatic call. Time, dawn, NPCs, events, etc. remain vanilla.
 [HarmonyPatch]
 internal static class InfiniteAnglerDawnPatch
 {
@@ -28,20 +29,46 @@ internal static class InfiniteAnglerDawnPatch
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
         var swap = InfiniteAnglerRuntime.AnglerQuestSwapMethod;
+        var removed = 0;
 
         foreach (var instruction in instructions)
         {
             if (instruction.Calls(swap))
             {
-                // Preserve the surrounding vanilla time/day transition while removing
-                // only the automatic Angler quest reset.
-                yield return new CodeInstruction(OpCodes.Nop);
+                // Mutate the existing instruction so branch labels / exception-block
+                // metadata stay attached to the same IL position.
+                instruction.opcode = OpCodes.Nop;
+                instruction.operand = null;
+                removed++;
             }
-            else
-            {
-                yield return instruction;
-            }
+
+            yield return instruction;
         }
+
+        if (removed != 1)
+        {
+            throw new InvalidOperationException(
+                "Expected exactly one Main.AnglerQuestSwap() call in Main.UpdateTime(), found " +
+                removed + ".");
+        }
+    }
+}
+
+// Re-evaluate once per server tick as well as immediately after a successful
+// completion. That means a player disconnecting can instantly stop blocking the
+// group without needing somebody else to turn in another fish.
+[HarmonyPatch]
+internal static class InfiniteAnglerTickPatch
+{
+    private static MethodBase TargetMethod()
+    {
+        return InfiniteAnglerRuntime.UpdateTimeMethod;
+    }
+
+    [HarmonyPostfix]
+    private static void Postfix()
+    {
+        InfiniteAnglerRuntime.TryAdvanceQuest();
     }
 }
 
@@ -74,6 +101,7 @@ internal static class InfiniteAnglerRuntime
     private static FieldInfo _readBuffer;
     private static FieldInfo _whoAmI;
     private static int _anglerQuestFinishedMessageId;
+    private static bool _advancing;
 
     public static MethodBase GetDataMethod { get; private set; }
     public static MethodBase UpdateTimeMethod { get; private set; }
@@ -143,7 +171,7 @@ internal static class InfiniteAnglerRuntime
             return true;
         }
 
-        if (!TryGetPlayer(messageBuffer, out var player, out var name))
+        if (!TryGetPlayer(messageBuffer, out _, out var name))
         {
             return true;
         }
@@ -166,23 +194,52 @@ internal static class InfiniteAnglerRuntime
         var finishedToday = GetFinishedToday();
         if (!finishedToday.Contains(name))
         {
-            // Vanilla rejected the packet, so this was not a successful quest turn-in.
+            // Vanilla rejected this packet; it was not a successful quest turn-in.
             return;
         }
 
+        TryAdvanceQuest();
+    }
+
+    public static void TryAdvanceQuest()
+    {
+        if (_advancing || GetNetMode() != 2)
+        {
+            return;
+        }
+
+        var finishedToday = GetFinishedToday();
         if (!AllConnectedPlayersFinished(finishedToday))
         {
             return;
         }
 
-        // Let vanilla perform one ordinary global quest swap. This resets the
-        // completion list and broadcasts the next quest to all connected clients.
-        AnglerQuestSwapMethod.Invoke(null, null);
+        try
+        {
+            _advancing = true;
+
+            // This is a normal server-mode vanilla quest swap: one new global quest,
+            // the completion list resets, and Terraria broadcasts the new quest.
+            AnglerQuestSwapMethod.Invoke(null, null);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("[Infinite Angler] Quest advance failed: " + Unwrap(ex));
+        }
+        finally
+        {
+            _advancing = false;
+        }
     }
 
     private static bool AllConnectedPlayersFinished(IList<string> finishedToday)
     {
         var players = (Array)_players.GetValue(null);
+        if (players == null)
+        {
+            return false;
+        }
+
         var anyConnected = false;
 
         for (var index = 0; index < players.Length; index++)
@@ -295,6 +352,16 @@ internal static class InfiniteAnglerRuntime
 
         var value = field.IsLiteral ? field.GetRawConstantValue() : field.GetValue(null);
         return Convert.ToInt32(value);
+    }
+
+    private static Exception Unwrap(Exception exception)
+    {
+        while (exception is TargetInvocationException invocation && invocation.InnerException != null)
+        {
+            exception = invocation.InnerException;
+        }
+
+        return exception;
     }
 }
 #else
