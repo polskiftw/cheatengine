@@ -16,8 +16,8 @@ public static class Mod
     }
 }
 
-// Vanilla calls Main.AnglerQuestSwap() from Main.UpdateTime() when a new day starts.
-// Remove only that automatic call. Time, dawn, NPCs, events, etc. remain vanilla.
+// Vanilla's dawn transition resets the Angler quest. We remove only the Angler
+// reset sequence and leave the rest of Main.UpdateTime() untouched.
 [HarmonyPatch]
 internal static class InfiniteAnglerDawnPatch
 {
@@ -28,30 +28,84 @@ internal static class InfiniteAnglerDawnPatch
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
+        var list = instructions.ToList();
         var swap = InfiniteAnglerRuntime.AnglerQuestSwapMethod;
-        var removed = 0;
+        var finishedField = InfiniteAnglerRuntime.FinishedTodayField;
+        var swapIndex = list.FindIndex(instruction => instruction.Calls(swap));
 
-        foreach (var instruction in instructions)
+        if (swapIndex < 0)
         {
-            if (instruction.Calls(swap))
+            throw new InvalidOperationException("Main.UpdateTime() no longer calls Main.AnglerQuestSwap().");
+        }
+
+        if (list.Skip(swapIndex + 1).Any(instruction => instruction.Calls(swap)))
+        {
+            throw new InvalidOperationException("Main.UpdateTime() now contains multiple AnglerQuestSwap() calls.");
+        }
+
+        // Terraria's dawn reset consists of clearing anglerWhoFinishedToday and
+        // calling AnglerQuestSwap(). Locate the clear immediately around that call
+        // and suppress both operations. This preserves completion state across days.
+        var clearIndex = FindFinishedTodayClear(list, swapIndex, finishedField);
+        SuppressCall(list[swapIndex]);
+        SuppressCall(list[clearIndex]);
+
+        return list;
+    }
+
+    private static int FindFinishedTodayClear(List<CodeInstruction> list, int swapIndex, FieldInfo finishedField)
+    {
+        var start = Math.Max(0, swapIndex - 12);
+        var end = Math.Min(list.Count - 1, swapIndex + 12);
+
+        for (var index = start; index <= end; index++)
+        {
+            if (!CallsClear(list[index]))
             {
-                instruction.opcode = OpCodes.Nop;
-                instruction.operand = null;
-                removed++;
+                continue;
             }
 
-            yield return instruction;
+            for (var previous = index - 1; previous >= Math.Max(start, index - 4); previous--)
+            {
+                if (list[previous].LoadsField(finishedField))
+                {
+                    return index;
+                }
+            }
         }
 
-        if (removed != 1)
+        throw new InvalidOperationException(
+            "Could not identify vanilla's anglerWhoFinishedToday.Clear() near AnglerQuestSwap().");
+    }
+
+    private static bool CallsClear(CodeInstruction instruction)
+    {
+        return instruction.operand is MethodInfo method &&
+               method.Name == "Clear" &&
+               method.GetParameters().Length == 0 &&
+               typeof(IList<string>).IsAssignableFrom(method.DeclaringType);
+    }
+
+    private static void SuppressCall(CodeInstruction instruction)
+    {
+        // Nopping only the call would leave its instance on the evaluation stack for
+        // IList.Clear(). Pop consumes that instance; the static AnglerQuestSwap call
+        // has no arguments, so Nop is correct there.
+        if (CallsClear(instruction))
         {
-            throw new InvalidOperationException(
-                "Expected exactly one Main.AnglerQuestSwap() call in Main.UpdateTime(), found " +
-                removed + ".");
+            instruction.opcode = OpCodes.Pop;
         }
+        else
+        {
+            instruction.opcode = OpCodes.Nop;
+        }
+
+        instruction.operand = null;
     }
 }
 
+// Re-evaluate every server tick so disconnecting players stop blocking the group
+// immediately. After a swap the vanilla completion list is empty, so this is inert.
 [HarmonyPatch]
 internal static class InfiniteAnglerTickPatch
 {
@@ -91,13 +145,13 @@ internal static class InfiniteAnglerCompletionPatch
 internal static class InfiniteAnglerRuntime
 {
     private static FieldInfo _netMode;
-    private static FieldInfo _finishedToday;
     private static FieldInfo _players;
     private static FieldInfo _readBuffer;
     private static FieldInfo _whoAmI;
     private static int _anglerQuestFinishedMessageId;
     private static bool _advancing;
 
+    public static FieldInfo FinishedTodayField { get; private set; }
     public static MethodBase GetDataMethod { get; private set; }
     public static MethodBase UpdateTimeMethod { get; private set; }
     public static MethodInfo AnglerQuestSwapMethod { get; private set; }
@@ -105,7 +159,7 @@ internal static class InfiniteAnglerRuntime
     public static void Initialize()
     {
         _netMode = RequireField(typeof(Main), "netMode", typeof(int));
-        _finishedToday = RequireField(typeof(Main), "anglerWhoFinishedToday", null);
+        FinishedTodayField = RequireField(typeof(Main), "anglerWhoFinishedToday", null);
         _players = RequireField(typeof(Main), "player", null);
         _readBuffer = RequireField(typeof(MessageBuffer), "readBuffer", typeof(byte[]));
         _whoAmI = RequireField(typeof(MessageBuffer), "whoAmI", typeof(int));
@@ -147,7 +201,7 @@ internal static class InfiniteAnglerRuntime
         var messageIdType = typeof(Main).Assembly.GetType("Terraria.ID.MessageID", throwOnError: true);
         _anglerQuestFinishedMessageId = ReadConstantInt(messageIdType, "AnglerQuestFinished");
 
-        if (!typeof(IList<string>).IsAssignableFrom(_finishedToday.FieldType))
+        if (!typeof(IList<string>).IsAssignableFrom(FinishedTodayField.FieldType))
         {
             throw new InvalidOperationException(
                 "Main.anglerWhoFinishedToday is no longer an IList<string>.");
@@ -311,7 +365,7 @@ internal static class InfiniteAnglerRuntime
 
     private static IList<string> GetFinishedToday()
     {
-        return (IList<string>)_finishedToday.GetValue(null);
+        return (IList<string>)FinishedTodayField.GetValue(null);
     }
 
     private static int GetNetMode()
