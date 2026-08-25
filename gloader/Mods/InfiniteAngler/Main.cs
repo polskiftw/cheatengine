@@ -35,8 +35,6 @@ internal static class InfiniteAnglerDawnPatch
         {
             if (instruction.Calls(swap))
             {
-                // Mutate the existing instruction so branch labels / exception-block
-                // metadata stay attached to the same IL position.
                 instruction.opcode = OpCodes.Nop;
                 instruction.operand = null;
                 removed++;
@@ -54,9 +52,6 @@ internal static class InfiniteAnglerDawnPatch
     }
 }
 
-// Re-evaluate once per server tick as well as immediately after a successful
-// completion. That means a player disconnecting can instantly stop blocking the
-// group without needing somebody else to turn in another fish.
 [HarmonyPatch]
 internal static class InfiniteAnglerTickPatch
 {
@@ -194,7 +189,6 @@ internal static class InfiniteAnglerRuntime
         var finishedToday = GetFinishedToday();
         if (!finishedToday.Contains(name))
         {
-            // Vanilla rejected this packet; it was not a successful quest turn-in.
             return;
         }
 
@@ -217,9 +211,6 @@ internal static class InfiniteAnglerRuntime
         try
         {
             _advancing = true;
-
-            // This is a normal server-mode vanilla quest swap: one new global quest,
-            // the completion list resets, and Terraria broadcasts the new quest.
             AnglerQuestSwapMethod.Invoke(null, null);
         }
         catch (Exception ex)
@@ -365,8 +356,6 @@ internal static class InfiniteAnglerRuntime
     }
 }
 #else
-// Infinite Angler is server-authoritative. Host & Play runs the server-side patch
-// in TerrariaServer.exe; joining clients require no gloader mod of their own.
 public static class Mod
 {
     public static void Load()
