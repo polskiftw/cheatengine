@@ -7,9 +7,10 @@ Drop raw C# source here.
 ```text
 Mods/
   InfiniteAngler.cs
+  RainwaveRadio.cs
 ```
 
-That file is compiled in memory every time gloader starts.
+Each file is compiled in memory every time gloader starts.
 
 ## Multi-file mod
 
@@ -31,6 +32,7 @@ A mod is normal C#. gloader compiles it against:
 
 - the exact `Terraria.exe` or `TerrariaServer.exe` being launched;
 - managed DLLs beside Terraria;
+- managed DLLs shipped beside gloader;
 - Harmony (`HarmonyLib`);
 - the normal .NET Framework assemblies already loaded.
 
@@ -81,6 +83,26 @@ server install step or a compiled server plugin.
 
 The included `InfiniteAngler.cs` uses this model: it is inert in the visible client
 and active in the Host & Play/dedicated server process. Joining players stay vanilla.
+
+The included `RainwaveRadio.cs` does the opposite: it is client-only and becomes a
+no-op when the same Mods folder is compiled for `TerrariaServer.exe`.
+
+### Rainwave Radio defaults
+
+`RainwaveRadio.cs` turns Terraria's music channel into a continuous Rainwave stream.
+It currently ships with the Rainwave **All** station as its default listening source.
+
+- biome, event, and boss music changes do not restart or replace the radio stream;
+- Terraria's Music slider controls the radio volume;
+- pausing smoothly ducks the radio instead of pausing or abruptly muting it;
+- a short now-playing message is enabled and drawn with Terraria's normal MouseText
+  font/shadow styling;
+- there is no Rainwave login, voting, or account integration;
+- if the stream becomes unhealthy, the radio is muted and vanilla Terraria music is
+  allowed to resume while the radio reconnects.
+
+The radio uses NAudio, which is shipped with the built gloader folder as a runtime
+dependency. The raw mod itself remains ordinary C# source.
 
 ## Disable a mod
 
