@@ -12,23 +12,16 @@ namespace GLoader
         {
             Directory.CreateDirectory(modsDirectory);
 
-            var mods = new List<ModSource>();
-
             foreach (var file in Directory
-                .EnumerateFiles(modsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+                .EnumerateFiles(modsDirectory, "*", SearchOption.TopDirectoryOnly)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
             {
-                if (IsDisabled(file))
-                {
-                    continue;
-                }
-
-                var displayName = Path.GetFileNameWithoutExtension(file);
-                mods.Add(new ModSource(
-                    MakeId(displayName),
-                    displayName,
-                    new[] { file }));
+                Log.Warn(
+                    "Ignoring loose file in Mods root: " + Path.GetFileName(file) +
+                    ". Each mod must live in its own immediate subfolder.");
             }
+
+            var mods = new List<ModSource>();
 
             foreach (var directory in Directory
                 .EnumerateDirectories(modsDirectory, "*", SearchOption.TopDirectoryOnly)

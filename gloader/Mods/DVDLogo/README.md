@@ -2,14 +2,12 @@
 
 Client-side gloader mod that keeps a classic DVD logo bouncing around the Terraria screen.
 
-The mod is intentionally simple:
+Files in this mod folder:
 
-- `Main.cs` is compiled by gloader at runtime;
-- `dvd-logo.png` sits beside it as a normal PNG and is loaded directly at runtime;
-- the logo moves continuously and reflects off the current screen edges;
-- every wall bounce picks a visibly different bright hue;
-- a corner hit changes color once;
-- window/resolution changes use the current screen bounds;
-- the dedicated-server build is a no-op.
+- `Main.cs` — motion, collision, tinting, and config loading.
+- `dvd-logo.png` — the normal transparent PNG asset loaded at runtime.
+- `DVDLogo.ini` — user-facing settings.
 
-The PNG is not embedded, converted, or encoded into the C# source.
+`Width` in `DVDLogo.ini` controls the rendered logo width in pixels. The image keeps its original aspect ratio, so the default `Width=192` renders the current 2:1 logo at 192x96.
+
+The logo starts at a random screen position and angle, reflects from the screen edges, and changes to a visibly different bright color on every bounce. A corner collision counts as one bounce/color change. The server build is a no-op.

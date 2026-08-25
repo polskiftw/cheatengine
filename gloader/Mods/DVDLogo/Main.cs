@@ -11,6 +11,9 @@ internal static class DvdLogoScreensaver
 {
     private const float Speed = 190f;
     private const double MaxFrameSeconds = 0.05;
+    private const int DefaultLogoWidth = 192;
+    private const int MinimumLogoWidth = 32;
+    private const int MaximumLogoWidth = 2048;
 
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static readonly Random Random = new Random();
@@ -20,6 +23,8 @@ internal static class DvdLogoScreensaver
     private static Vector2 _velocity;
     private static Color _color = Color.White;
     private static float _hue;
+    private static float _scale = 1f;
+    private static int _logoWidth = DefaultLogoWidth;
     private static double _lastSeconds = -1.0;
     private static bool _initialized;
     private static bool _disabled;
@@ -68,7 +73,7 @@ internal static class DvdLogoScreensaver
                 _color,
                 0f,
                 Vector2.Zero,
-                1f,
+                _scale,
                 SpriteEffects.None,
                 0f);
         }
@@ -84,22 +89,61 @@ internal static class DvdLogoScreensaver
         if (_logo != null)
             return;
 
-        var path = Path.Combine(
+        var modDirectory = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
             "Mods",
-            "DVDLogo",
-            "dvd-logo.png");
+            "DVDLogo");
 
-        using (var stream = File.OpenRead(path))
+        using (var stream = File.OpenRead(Path.Combine(modDirectory, "dvd-logo.png")))
             _logo = Texture2D.FromStream(graphicsDevice, stream);
 
         PremultiplyAlpha(_logo);
+        LoadSettings(Path.Combine(modDirectory, "DVDLogo.ini"));
+        _scale = _logo.Width > 0 ? _logoWidth / (float)_logo.Width : 1f;
+    }
+
+    private static void LoadSettings(string path)
+    {
+        _logoWidth = DefaultLogoWidth;
+
+        try
+        {
+            if (!File.Exists(path))
+                return;
+
+            foreach (var rawLine in File.ReadAllLines(path))
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0 ||
+                    line.StartsWith("#", StringComparison.Ordinal) ||
+                    line.StartsWith(";", StringComparison.Ordinal))
+                    continue;
+
+                var equals = line.IndexOf('=');
+                if (equals <= 0)
+                    continue;
+
+                var key = line.Substring(0, equals).Trim();
+                var value = line.Substring(equals + 1).Trim();
+
+                int width;
+                if (string.Equals(key, "Width", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(value, out width))
+                {
+                    _logoWidth = Math.Max(MinimumLogoWidth, Math.Min(MaximumLogoWidth, width));
+                }
+            }
+        }
+        catch
+        {
+            _logoWidth = DefaultLogoWidth;
+        }
     }
 
     private static void InitializeMotion()
     {
-        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
-        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
+        var maxX = Math.Max(0f, Main.screenWidth - RenderedWidth);
+        var maxY = Math.Max(0f, Main.screenHeight - RenderedHeight);
 
         _position = new Vector2(
             maxX > 0f ? (float)(Random.NextDouble() * maxX) : 0f,
@@ -116,6 +160,16 @@ internal static class DvdLogoScreensaver
         _hue = (float)(Random.NextDouble() * 360.0);
         _color = HsvToColor(_hue, 0.9f, 1f);
         _initialized = true;
+    }
+
+    private static float RenderedWidth
+    {
+        get { return _logo == null ? 0f : _logo.Width * _scale; }
+    }
+
+    private static float RenderedHeight
+    {
+        get { return _logo == null ? 0f : _logo.Height * _scale; }
     }
 
     private static void PremultiplyAlpha(Texture2D texture)
@@ -152,8 +206,8 @@ internal static class DvdLogoScreensaver
 
         _position += _velocity * elapsedSeconds;
 
-        var maxX = Math.Max(0f, Main.screenWidth - _logo.Width);
-        var maxY = Math.Max(0f, Main.screenHeight - _logo.Height);
+        var maxX = Math.Max(0f, Main.screenWidth - RenderedWidth);
+        var maxY = Math.Max(0f, Main.screenHeight - RenderedHeight);
         var bounced = false;
 
         if (maxX <= 0f)
@@ -196,7 +250,6 @@ internal static class DvdLogoScreensaver
 
     private static void ChangeColor()
     {
-        // Keep the next hue far enough away that every bounce is visibly different.
         _hue = (_hue + 70f + (float)(Random.NextDouble() * 220.0)) % 360f;
         _color = HsvToColor(_hue, 0.9f, 1f);
     }

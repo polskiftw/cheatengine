@@ -12,7 +12,12 @@ internal static partial class RainwaveRadio
 
         try
         {
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mods", "RainwaveRadio.ini");
+            var path = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Mods",
+                "RainwaveRadio",
+                "RainwaveRadio.ini");
+
             if (!File.Exists(path))
                 return;
 
@@ -45,7 +50,6 @@ internal static partial class RainwaveRadio
         }
         catch
         {
-            // A missing or malformed config must never prevent Terraria from starting.
             _stationId = DefaultStationId;
             _stationMount = DefaultStationMount;
             _showNowPlaying = true;
