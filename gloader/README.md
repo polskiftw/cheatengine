@@ -104,7 +104,7 @@ gloader/logs/gloader-server.log
 
 ### Infinite Angler
 
-`Mods/InfiniteAngler/Main.cs` is the server-authoritative endless Angler quest mod. The visible client build is a no-op; Host & Play and dedicated-server builds reset only the completing player's daily quest state and send that player another normal vanilla Angler quest. Joining clients can remain vanilla.
+`Mods/InfiniteAngler/Main.cs` is a server-authoritative shared endless Angler quest mod. Vanilla's dawn quest rollover is suppressed, so the current quest stays active until every currently connected player has completed it. The server then performs one normal global Angler quest swap for everyone and starts a fresh round. Players who join become part of the current round; players who disconnect stop counting. Joining clients can remain vanilla.
 
 ### No Liquid Dupe
 
