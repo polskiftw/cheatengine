@@ -54,7 +54,7 @@ jobs:
         run: |
           $loader = (Resolve-Path "dist/gloader/gloader.exe").Path
           $target = (Resolve-Path "tests/HostPlayFixture/bin/Release/net48/Terraria.exe").Path
-          $mods = (Resolve-Path "Mods").Path
+          $mods = (Resolve-Path "gmods").Path
 
           & $loader --target $target --mods $mods
           if ($LASTEXITCODE -ne 0) {

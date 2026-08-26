@@ -24,7 +24,7 @@ namespace GLoader
                 var targetPath = TargetLocator.Find(loaderDirectory, options);
                 var gameDirectory = Path.GetDirectoryName(targetPath);
                 var modsDirectory = string.IsNullOrWhiteSpace(options.ModsPath)
-                    ? Path.Combine(loaderDirectory, "Mods")
+                    ? Path.Combine(loaderDirectory, "gmods")
                     : Path.GetFullPath(options.ModsPath);
                 var isServerTarget = string.Equals(
                     Path.GetFileName(targetPath),
@@ -87,7 +87,7 @@ namespace GLoader
                 Console.Error.WriteLine("gloader failed:");
                 Console.Error.WriteLine(ex);
                 Console.Error.WriteLine();
-                Console.Error.WriteLine("See gloader\\logs\\gloader-client.log or gloader-server.log for details.");
+                Console.Error.WriteLine("See logs\\gloader-client.log or logs\\gloader-server.log for details.");
                 return 1;
             }
             finally

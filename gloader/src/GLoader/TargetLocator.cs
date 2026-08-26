@@ -37,8 +37,8 @@ namespace GLoader
             }
 
             throw new FileNotFoundException(
-                "Could not find " + fileName + ". Put the gloader folder inside the Terraria folder " +
-                "or launch with --target \"C:\\path\\to\\Terraria.exe\".");
+                "Could not find " + fileName + ". Put gloader.exe beside " + fileName +
+                " or launch with --target \"C:\\path\\to\\Terraria.exe\".");
         }
 
         private static string Validate(string path)

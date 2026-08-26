@@ -17,7 +17,7 @@ namespace GLoader
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
             {
                 Log.Warn(
-                    "Ignoring loose file in Mods root: " + Path.GetFileName(file) +
+                    "Ignoring loose file in gmods root: " + Path.GetFileName(file) +
                     ". Each mod must live in its own immediate subfolder.");
             }
 
