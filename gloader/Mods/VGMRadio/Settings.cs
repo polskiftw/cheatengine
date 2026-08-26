@@ -2,21 +2,33 @@
 using System;
 using System.IO;
 
+internal enum VgmSource
+{
+    Rainwave,
+    Gtt
+}
+
 internal static partial class RainwaveRadio
 {
+    private static VgmSource _source = VgmSource.Rainwave;
+
     private static void LoadSettings()
     {
+        _source = VgmSource.Rainwave;
         _stationId = DefaultStationId;
         _stationMount = DefaultStationMount;
         _showNowPlaying = true;
+
+        // These provider hooks must exist before Initialize starts either worker thread.
+        EnsureProviderPatches();
 
         try
         {
             var path = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 "Mods",
-                "RainwaveRadio",
-                "RainwaveRadio.ini");
+                "VGMRadio",
+                "VGMRadio.ini");
 
             if (!File.Exists(path))
                 return;
@@ -36,7 +48,12 @@ internal static partial class RainwaveRadio
                 var key = line.Substring(0, equals).Trim();
                 var value = line.Substring(equals + 1).Trim();
 
-                if (string.Equals(key, "Station", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(key, "Source", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(key, "Provider", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplySource(value);
+                }
+                else if (string.Equals(key, "Station", StringComparison.OrdinalIgnoreCase))
                 {
                     ApplyStation(value);
                 }
@@ -50,9 +67,34 @@ internal static partial class RainwaveRadio
         }
         catch
         {
+            _source = VgmSource.Rainwave;
             _stationId = DefaultStationId;
             _stationMount = DefaultStationMount;
             _showNowPlaying = true;
+        }
+    }
+
+    private static void ApplySource(string value)
+    {
+        var normalized = (value ?? string.Empty)
+            .Trim()
+            .Replace(" ", string.Empty)
+            .Replace("-", string.Empty)
+            .Replace("_", string.Empty)
+            .ToLowerInvariant();
+
+        switch (normalized)
+        {
+            case "gtt":
+            case "gamethattune":
+            case "gamethattuneradio":
+                _source = VgmSource.Gtt;
+                return;
+
+            case "rainwave":
+            default:
+                _source = VgmSource.Rainwave;
+                return;
         }
     }
 

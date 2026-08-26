@@ -31,7 +31,7 @@ jobs:
           dotnet restore gloader.sln
           dotnet restore tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj
           dotnet restore tests/NoLiquidDupeCompile/NoLiquidDupeCompile.csproj
-          dotnet restore tests/RainwaveRadioCompile/RainwaveRadioCompile.csproj
+          dotnet restore tests/VGMRadioCompile/VGMRadioCompile.csproj
           dotnet restore tests/HostPlayFixture/Client.csproj
           dotnet restore tests/HostPlayFixture/Server.csproj
 
@@ -41,7 +41,7 @@ jobs:
           dotnet build gloader.sln -c Release --no-restore
           dotnet build tests/InfiniteAnglerCompile/InfiniteAnglerCompile.csproj -c Release --no-restore
           dotnet build tests/NoLiquidDupeCompile/NoLiquidDupeCompile.csproj -c Release --no-restore
-          dotnet build tests/RainwaveRadioCompile/RainwaveRadioCompile.csproj -c Release --no-restore
+          dotnet build tests/VGMRadioCompile/VGMRadioCompile.csproj -c Release --no-restore
           dotnet build tests/HostPlayFixture/Client.csproj -c Release --no-restore
           dotnet build tests/HostPlayFixture/Server.csproj -c Release --no-restore
 

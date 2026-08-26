@@ -14,11 +14,12 @@ Mods/
     Main.cs
   NoLiquidDupe/
     Main.cs
-  RainwaveRadio/
+  VGMRadio/
     Main.cs
     NowPlaying.cs
+    Providers.cs
     Settings.cs
-    RainwaveRadio.ini
+    VGMRadio.ini
   DVDLogo/
     Main.cs
     DVDLogo.ini
@@ -110,19 +111,25 @@ gloader/logs/gloader-server.log
 
 `Mods/NoLiquidDupe/Main.cs` is a server-authoritative fix for the regular-bucket water/lava/honey duplication loop. It keeps the liquid volume conserved for partial regular-bucket scoops while leaving full scoops, Bottomless Buckets, pumps, and normal liquid simulation alone. Joining clients can remain vanilla.
 
-### Rainwave Radio
+### VGM Radio
 
-`Mods/RainwaveRadio/` is client-only. It keeps one continuous Rainwave stream playing independently of Terraria biome/boss music changes, uses Terraria's Music slider, smoothly ducks while paused, and can show now-playing text.
+`Mods/VGMRadio/` is client-only. It keeps one continuous video-game-music radio stream playing independently of Terraria biome/boss music changes, uses Terraria's Music slider, smoothly ducks while paused, and can show now-playing text.
+
+It currently supports two sources:
+
+- `Rainwave` — choose among `All`, `Game`, `OCReMix`, `Covers`, `Chiptunes`, and `Chill`.
+- `GTT` (Game That Tune Radio) — one large mixed VGM station. VGMRadio uses GTT's metadata-preserving spoiler MP3 stream so the now-playing overlay continues to work during GTT guessing-game programming.
 
 Its user settings live beside its source:
 
 ```ini
-# Mods/RainwaveRadio/RainwaveRadio.ini
+# Mods/VGMRadio/VGMRadio.ini
+Source=Rainwave
 Station=All
 ShowNowPlaying=true
 ```
 
-Supported stations are `All`, `Game`, `OCReMix`, `Covers`, `Chiptunes`, and `Chill`.
+`Station` applies only to Rainwave and is ignored when `Source=GTT`.
 
 ### DVD Logo
 
