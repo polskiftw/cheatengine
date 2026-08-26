@@ -8,7 +8,7 @@ internal enum VgmSource
     Gtt
 }
 
-internal static partial class RainwaveRadio
+internal static partial class VGMRadio
 {
     private static VgmSource _source = VgmSource.Rainwave;
 
@@ -18,9 +18,6 @@ internal static partial class RainwaveRadio
         _stationId = DefaultStationId;
         _stationMount = DefaultStationMount;
         _showNowPlaying = true;
-
-        // These provider hooks must exist before Initialize starts either worker thread.
-        EnsureProviderPatches();
 
         try
         {

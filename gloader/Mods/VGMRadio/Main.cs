@@ -22,13 +22,13 @@ public static class Mod
 {
     public static void Load()
     {
-        RainwaveRadio.Initialize();
+        VGMRadio.Initialize();
     }
 }
 
-internal static partial class RainwaveRadio
+internal static partial class VGMRadio
 {
-    private const string HarmonyId = "gloader.mod.rainwaveradio";
+    private const string HarmonyId = "gloader.mod.vgmradio";
 
     private const int DefaultStationId = 5;
     private const string DefaultStationMount = "all";
@@ -110,8 +110,8 @@ internal static partial class RainwaveRadio
         {
             harmony.Patch(
                 updateAudio,
-                prefix: new HarmonyMethod(AccessTools.Method(typeof(RainwaveRadio), nameof(UpdateAudioPrefix))),
-                postfix: new HarmonyMethod(AccessTools.Method(typeof(RainwaveRadio), nameof(UpdateAudioPostfix))));
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(VGMRadio), nameof(UpdateAudioPrefix))),
+                postfix: new HarmonyMethod(AccessTools.Method(typeof(VGMRadio), nameof(UpdateAudioPostfix))));
 
             if (_showNowPlaying)
                 TryInstallOverlayPatch(harmony);
@@ -251,7 +251,7 @@ internal static partial class RainwaveRadio
         var thread = new Thread(() => AudioWorker(generation))
         {
             IsBackground = true,
-            Name = "gloader Rainwave audio"
+            Name = "gloader VGMRadio audio"
         };
         thread.Start();
     }
@@ -284,7 +284,7 @@ internal static partial class RainwaveRadio
 
                         var read = resampler.Read(scratch, 0, scratch.Length);
                         if (read <= 0)
-                            throw new EndOfStreamException("Rainwave stream ended.");
+                            throw new EndOfStreamException("Radio stream ended.");
 
                         var chunk = new byte[read];
                         Buffer.BlockCopy(scratch, 0, chunk, 0, read);
@@ -303,38 +303,11 @@ internal static partial class RainwaveRadio
         }
     }
 
-    private static string ResolveStreamUrl()
-    {
-        try
-        {
-            var playlist = DownloadText(
-                "https://rainwave.cc/tune_in/" + _stationId + ".mp3.m3u",
-                5000);
-
-            foreach (var rawLine in playlist.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var line = rawLine.Trim();
-                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
-                    continue;
-
-                Uri uri;
-                if (Uri.TryCreate(line, UriKind.Absolute, out uri) &&
-                    (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
-                    return uri.AbsoluteUri;
-            }
-        }
-        catch
-        {
-        }
-
-        return "https://gamestream.rainwave.cc/" + _stationMount + ".mp3";
-    }
-
     private static string DownloadText(string url, int timeoutMilliseconds)
     {
         var request = (HttpWebRequest)WebRequest.Create(url);
         request.Method = "GET";
-        request.UserAgent = "gloader-rainwave-radio/0.2";
+        request.UserAgent = "gloader-vgm-radio/0.4";
         request.Accept = "*/*";
         request.Timeout = timeoutMilliseconds;
         request.ReadWriteTimeout = timeoutMilliseconds;

@@ -3,21 +3,11 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using HarmonyLib;
 
-internal static partial class RainwaveRadio
+internal static partial class VGMRadio
 {
-    private static readonly Regex CurrentSongRegex = new Regex(
-        @"""sched_current""\s*:\s*\{.*?""song_data""\s*:\s*\{.*?""title""\s*:\s*""((?:\\.|[^""\\])*)"".*?""artists""\s*:\s*\[(.*?)\]",
-        RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ArtistRegex = new Regex(
-        @"""name""\s*:\s*""((?:\\.|[^""\\])*)""",
-        RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.CultureInvariant);
-
     private static void TryInstallOverlayPatch(Harmony harmony)
     {
         try
@@ -31,7 +21,7 @@ internal static partial class RainwaveRadio
 
             harmony.Patch(
                 drawMouseText,
-                prefix: new HarmonyMethod(AccessTools.Method(typeof(RainwaveRadio), nameof(DrawOverlayPrefix))));
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(VGMRadio), nameof(DrawOverlayPrefix))));
         }
         catch
         {
@@ -63,7 +53,7 @@ internal static partial class RainwaveRadio
         var thread = new Thread(MetadataWorker)
         {
             IsBackground = true,
-            Name = "gloader Rainwave metadata"
+            Name = "gloader VGMRadio metadata"
         };
         thread.Start();
     }
@@ -74,9 +64,8 @@ internal static partial class RainwaveRadio
         {
             try
             {
-                var json = DownloadText("https://rainwave.cc/api4/info?sid=" + _stationId, 5000);
                 string display;
-                if (TryParseNowPlaying(json, out display))
+                if (TryGetProviderNowPlaying(out display))
                     SetNowPlaying(display);
             }
             catch
@@ -85,85 +74,6 @@ internal static partial class RainwaveRadio
 
             Thread.Sleep(1500);
         }
-    }
-
-    private static bool TryParseNowPlaying(string json, out string display)
-    {
-        display = null;
-        if (string.IsNullOrWhiteSpace(json))
-            return false;
-
-        var current = CurrentSongRegex.Match(json);
-        if (!current.Success)
-            return false;
-
-        var title = UnescapeJsonString(current.Groups[1].Value).Trim();
-        if (title.Length == 0)
-            return false;
-
-        var artists = ArtistRegex.Matches(current.Groups[2].Value)
-            .Cast<Match>()
-            .Select(match => UnescapeJsonString(match.Groups[1].Value).Trim())
-            .Where(name => name.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        display = artists.Length == 0
-            ? "Now playing: " + title
-            : "Now playing: " + string.Join(", ", artists) + " - " + title;
-        return true;
-    }
-
-    private static string UnescapeJsonString(string value)
-    {
-        if (string.IsNullOrEmpty(value) || value.IndexOf('\\') < 0)
-            return value ?? string.Empty;
-
-        var builder = new StringBuilder(value.Length);
-        for (var i = 0; i < value.Length; i++)
-        {
-            var c = value[i];
-            if (c != '\\' || i + 1 >= value.Length)
-            {
-                builder.Append(c);
-                continue;
-            }
-
-            c = value[++i];
-            switch (c)
-            {
-                case '"': builder.Append('"'); break;
-                case '\\': builder.Append('\\'); break;
-                case '/': builder.Append('/'); break;
-                case 'b': builder.Append('\b'); break;
-                case 'f': builder.Append('\f'); break;
-                case 'n': builder.Append('\n'); break;
-                case 'r': builder.Append('\r'); break;
-                case 't': builder.Append('\t'); break;
-                case 'u':
-                    if (i + 4 < value.Length)
-                    {
-                        int code;
-                        if (int.TryParse(
-                            value.Substring(i + 1, 4),
-                            NumberStyles.HexNumber,
-                            CultureInfo.InvariantCulture,
-                            out code))
-                        {
-                            builder.Append((char)code);
-                            i += 4;
-                            break;
-                        }
-                    }
-                    builder.Append('u');
-                    break;
-                default:
-                    builder.Append(c);
-                    break;
-            }
-        }
-
-        return builder.ToString();
     }
 
     private static void SetNowPlaying(string display)
