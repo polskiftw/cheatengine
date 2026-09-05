@@ -2318,18 +2318,19 @@ if syntaxcheck then return end
           <CheatEntries>
             <CheatEntry>
               <ID>10836</ID>
-              <Description>"⚠ x64 TODO - 🎣 All Fish Are Crates"</Description>
+              <Description>"🎣 All Fish Are Crates (vanilla rarity rolls preserved)"</Description>
               <Color>40FF00</Color>
               <VariableType>Auto Assembler Script</VariableType>
               <AssemblerScript>[ENABLE]
 {$lua}
 if syntaxcheck then return end
-x64ctUnsupported('All Fish Are Crates','the old generated hook relies on the x86 managed ABI for an out-parameter; x64 argument placement must be re-derived at runtime')
+x64ctEnableAllFishAreCrates()
 {$asm}
 
 [DISABLE]
 {$lua}
 if syntaxcheck then return end
+x64ctDisableAllFishAreCrates()
 {$asm}
 </AssemblerScript>
             </CheatEntry>
@@ -2370,6 +2371,7 @@ x64ct.buffState = x64ct.buffState or {}
 x64ct.cleaners = x64ct.cleaners or {}
 x64ct.drop = x64ct.drop or { enabled100=false, enabledMult=false }
 x64ct.rerolls = x64ct.rerolls or {}
+x64ct.fishCratesEnabled = x64ct.fishCratesEnabled or false
 
 local function x64ctHex(v)
   if not v then return '0' end
@@ -2710,6 +2712,7 @@ function x64ctStopFeatures()
   pcall(x64ctDisableInfiniteMana)
   pcall(x64ctDisableInfiniteAmmo)
   pcall(x64ctDisableNpcImmortal)
+  pcall(x64ctDisableAllFishAreCrates,true)
   pcall(x64ctDisableMaxStackHotkey)
   pcall(x64ctDisableItemVacuum,true)
   pcall(x64ctDisableDrop100,true)
@@ -2742,6 +2745,72 @@ function x64ctDisable()
   x64ct.types={}
 end
 
+-- --------------------------------------------------------------------------
+-- All Fish Are Crates. CE injects a tiny managed helper into gloader's real
+-- CoreCLR process. Harmony adds a postfix to FishingCheck_RollDropLevels and
+-- changes only its final ref/out bool after vanilla has completed every other
+-- rarity/quality roll.
+-- --------------------------------------------------------------------------
+local function x64ctFileExists(path)
+  local f=io.open(path,'rb')
+  if f then f:close(); return true end
+  return false
+end
+
+local function x64ctTrailingSlash(path)
+  local last=string.sub(path,-1)
+  if last~='\\' and last~='/' then return path..'\\' end
+  return path
+end
+
+function x64ctTableRoot()
+  local origin=rawget(_G,'TrainerOrigin')
+  if origin and origin~='' then return x64ctTrailingSlash(origin) end
+
+  local candidate=x64ctTrailingSlash(getCheatEngineDir())..'Tables\\Terraria\\'
+  if x64ctFileExists(candidate..'runtime\\TerrariaCEHelper.dll') then return candidate end
+
+  error('Could not locate the Terraria CT runtime folder. Open the .CT from its Tables\\Terraria folder (double-clicking it is fine).')
+end
+
+function x64ctHelperCommand(command)
+  x64ctEnsureDotNet()
+  if type(injectDotNetDLL)~='function' then
+    dofile(getCheatEngineDir()..'autorun\\DotNetInject.lua')
+  end
+  if type(injectDotNetDLL)~='function' then
+    error('Cheat Engine DotNetInject.lua did not expose injectDotNetDLL.')
+  end
+
+  local runtime=x64ctTableRoot()..'runtime\\'
+  local helper=runtime..'TerrariaCEHelper.dll'
+  local harmony=runtime..'0Harmony.dll'
+  if not x64ctFileExists(helper) then error('Missing '..helper) end
+  if not x64ctFileExists(harmony) then error('Missing '..harmony) end
+
+  local returnValue,injectError=injectDotNetDLL(helper,'TerrariaCEHelper.EntryPoint','Run',command)
+  if returnValue==nil then
+    error('Managed Terraria CE helper injection failed: '..tostring(injectError))
+  end
+  if returnValue~=23063 then
+    error('Managed Terraria CE helper command '..command..' returned '..tostring(returnValue)..'.')
+  end
+  return true
+end
+
+function x64ctEnableAllFishAreCrates()
+  x64ctHelperCommand('fish-on')
+  x64ct.fishCratesEnabled=true
+  print('[Terraria x64 CT] All Fish Are Crates enabled.')
+end
+
+function x64ctDisableAllFishAreCrates(silent)
+  if not x64ct.fishCratesEnabled then return end
+  local ok,err=pcall(x64ctHelperCommand,'fish-off')
+  x64ct.fishCratesEnabled=false
+  if not ok and not silent then error(err) end
+  if ok then print('[Terraria x64 CT] All Fish Are Crates disabled.') end
+end
 -- --------------------------------------------------------------------------
 -- Buffs and debuff cleaners
 -- --------------------------------------------------------------------------
@@ -3400,6 +3469,6 @@ attachTimer.OnTimer=autoAttach
 attachTimer.Enabled=true
 </LuaScript>
   <Comments>
-Experimental x64 CoreCLR port for gloader/TerrariaRelease.dll. Original x86 table left untouched. Runtime field offsets are resolved through Cheat Engine .NET metadata. Entries prefixed with x64 TODO are deliberately disabled.
+Experimental x64 CoreCLR port for gloader/TerrariaRelease.dll. Original x86 table left untouched. Runtime field offsets are resolved through Cheat Engine .NET metadata. Entries prefixed with x64 TODO are deliberately disabled. All Fish Are Crates uses the CE-injected managed helper in Tables/Terraria/runtime; it is not a gmod.
 </Comments>
 </CheatTable>
