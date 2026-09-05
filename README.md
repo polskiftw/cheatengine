@@ -24,3 +24,9 @@ Each Cheat Engine artifact includes `BUILD-PROVENANCE.txt` with the exact upstre
 Use the **Build clean Cheat Engine 7.5** GitHub Actions workflow.
 
 No installer is produced or executed for Cheat Engine itself. The only installers used by CI are the official Lazarus/FPC compiler installers referenced by Cheat Engine's own build documentation.
+
+## Licensing and third-party software
+
+Cheat Engine itself remains governed by the licensing terms of the upstream Cheat Engine project; this repository does not replace or redefine those terms.
+
+Repository-maintained Terraria helper binaries are reproducible from the checked-in source under `Tables/Terraria/Helper/`. Additional third-party components introduced by this repository are documented in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), including exact package versions, upstream source locations, and license text.
