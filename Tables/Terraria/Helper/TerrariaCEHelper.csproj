@@ -6,6 +6,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>TerrariaCEHelper</AssemblyName>
     <RootNamespace>TerrariaCEHelper</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />
