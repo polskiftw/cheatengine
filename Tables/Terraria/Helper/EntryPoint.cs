@@ -301,11 +301,16 @@ public static class EntryPoint
                 state.DevArmorSeen = true;
         }
 
-        private static void DevArmorPrefix()
+        private static void DevArmorPrefix(object[] __args)
         {
             var state = _state;
-            if (state is not null && state.Active)
-                state.InDevArmor = true;
+            if (state is null || !state.Active)
+                return;
+
+            if (state.Source is null && __args.Length > 0 && __args[0] is not null)
+                state.Source = __args[0];
+
+            state.InDevArmor = true;
         }
 
         private static void DevArmorPostfix()
@@ -335,12 +340,17 @@ public static class EntryPoint
 
         private static void Supplement(State state)
         {
+            var hasChanceDrops = ChanceDrops.TryGetValue(state.Bag, out var drops);
+            var devEligible = DevArmorEligible.Contains(state.Bag);
+            if (!hasChanceDrops && !devEligible)
+                return;
+
             if (state.Source is null)
                 throw new InvalidOperationException($"Lucky Treasure Bags did not observe an item source while opening bag {state.Bag}.");
 
             var targets = FindTargets();
 
-            if (ChanceDrops.TryGetValue(state.Bag, out var drops))
+            if (hasChanceDrops)
             {
                 foreach (var drop in drops)
                 {
@@ -351,7 +361,7 @@ public static class EntryPoint
                 }
             }
 
-            if (!DevArmorEligible.Contains(state.Bag) || state.DevArmorSeen)
+            if (!devEligible || state.DevArmorSeen)
                 return;
 
             for (var attempt = 0; attempt < 512 && !state.DevArmorSeen; attempt++)
