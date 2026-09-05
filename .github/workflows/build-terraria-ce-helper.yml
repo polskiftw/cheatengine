@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - 'Tables/Terraria/Helper/**'
-      - 'tools/update-terraria-fish-crates.ps1'
+      - 'tools/update-terraria-managed-features.ps1'
       - '.github/workflows/build-terraria-ce-helper.yml'
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
 
       - name: Patch Terraria x64 table
         shell: pwsh
-        run: ./tools/update-terraria-fish-crates.ps1
+        run: ./tools/update-terraria-managed-features.ps1
 
       - name: Build managed CE helper
         shell: pwsh
@@ -59,8 +59,20 @@ jobs:
           [xml]$xml = Get-Content $ct -Raw
           if ($null -eq $xml.CheatTable) { throw 'Terraria CT XML validation failed.' }
           $raw = Get-Content $ct -Raw
-          foreach ($required in @('x64ctEnableAllFishAreCrates()', 'x64ctDisableAllFishAreCrates()', 'TerrariaCEHelper.EntryPoint', 'vanilla rarity rolls preserved')) {
-            if (!$raw.Contains($required)) { throw "Terraria CT is missing required fish-crates marker: $required" }
+          foreach ($required in @(
+            'x64ctEnableAllFishAreCrates()',
+            'x64ctDisableAllFishAreCrates()',
+            'vanilla rarity rolls preserved',
+            'x64ctEnableLuckyTreasureBags()',
+            'x64ctDisableLuckyTreasureBags()',
+            'Lucky Treasure Bags (all chance drops succeed, RNG preserved)',
+            'TerrariaCEHelper.EntryPoint'
+          )) {
+            if (!$raw.Contains($required)) { throw "Terraria CT is missing required managed-feature marker: $required" }
+          }
+          $helperSource = Get-Content '.\Tables\Terraria\Helper\EntryPoint.cs' -Raw
+          foreach ($required in @('"lucky-on"', 'LuckyTreasureBags', '5483', 'DevArmorEligible')) {
+            if (!$helperSource.Contains($required)) { throw "Terraria helper is missing Lucky Treasure Bags marker: $required" }
           }
           if (!(Test-Path '.\Tables\Terraria\runtime\TerrariaCEHelper.dll')) { throw 'Packaged helper DLL is missing.' }
           if (!(Test-Path '.\Tables\Terraria\runtime\0Harmony.dll')) { throw 'Packaged Harmony DLL is missing.' }
@@ -76,7 +88,7 @@ jobs:
             Write-Host 'Packaged Terraria CT/runtime already up to date.'
             exit 0
           }
-          git commit -m 'Package All Fish Are Crates runtime [skip ci]'
+          git commit -m 'Package Terraria managed CE runtime [skip ci]'
           if ($LASTEXITCODE -ne 0) { throw 'Failed to commit packaged Terraria runtime.' }
           git push origin HEAD:main
           if ($LASTEXITCODE -ne 0) { throw 'Failed to push packaged Terraria runtime.' }
