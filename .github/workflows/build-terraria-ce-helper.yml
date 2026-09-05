@@ -1,0 +1,82 @@
+name: Build Terraria CE helper
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Tables/Terraria/Helper/**'
+      - 'tools/update-terraria-fish-crates.ps1'
+      - '.github/workflows/build-terraria-ce-helper.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    runs-on: windows-2022
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Patch Terraria x64 table
+        shell: pwsh
+        run: ./tools/update-terraria-fish-crates.ps1
+
+      - name: Build managed CE helper
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'terraria-ce-helper'
+          Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
+          dotnet build '.\Tables\Terraria\Helper\TerrariaCEHelper.csproj' -c Release -o $out
+          if ($LASTEXITCODE -ne 0) { throw 'TerrariaCEHelper build failed.' }
+
+          $helper = Join-Path $out 'TerrariaCEHelper.dll'
+          $harmony = Join-Path $out '0Harmony.dll'
+          if (!(Test-Path $helper)) { throw 'TerrariaCEHelper.dll was not produced.' }
+          if (!(Test-Path $harmony)) { throw '0Harmony.dll was not copied beside the helper.' }
+
+          $runtime = '.\Tables\Terraria\runtime'
+          New-Item -ItemType Directory -Path $runtime -Force | Out-Null
+          Copy-Item $helper (Join-Path $runtime 'TerrariaCEHelper.dll') -Force
+          Copy-Item $harmony (Join-Path $runtime '0Harmony.dll') -Force
+
+          Write-Host "Helper bytes: $((Get-Item $helper).Length)"
+          Write-Host "Harmony bytes: $((Get-Item $harmony).Length)"
+
+      - name: Validate packaged table and runtime
+        shell: pwsh
+        run: |
+          $ct = '.\Tables\Terraria\Terraria-1.4.5.x-Table-Ver-7-CE45-x64-CoreCLR-Experimental.CT'
+          [xml]$xml = Get-Content $ct -Raw
+          if ($null -eq $xml.CheatTable) { throw 'Terraria CT XML validation failed.' }
+          $raw = Get-Content $ct -Raw
+          foreach ($required in @('x64ctEnableAllFishAreCrates()', 'x64ctDisableAllFishAreCrates()', 'TerrariaCEHelper.EntryPoint', 'vanilla rarity rolls preserved')) {
+            if (!$raw.Contains($required)) { throw "Terraria CT is missing required fish-crates marker: $required" }
+          }
+          if (!(Test-Path '.\Tables\Terraria\runtime\TerrariaCEHelper.dll')) { throw 'Packaged helper DLL is missing.' }
+          if (!(Test-Path '.\Tables\Terraria\runtime\0Harmony.dll')) { throw 'Packaged Harmony DLL is missing.' }
+
+      - name: Commit packaged runtime and table
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- 'Tables/Terraria/Terraria-1.4.5.x-Table-Ver-7-CE45-x64-CoreCLR-Experimental.CT' 'Tables/Terraria/runtime/TerrariaCEHelper.dll' 'Tables/Terraria/runtime/0Harmony.dll'
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host 'Packaged Terraria CT/runtime already up to date.'
+            exit 0
+          }
+          git commit -m 'Package All Fish Are Crates runtime [skip ci]'
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to commit packaged Terraria runtime.' }
+          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to push packaged Terraria runtime.' }
