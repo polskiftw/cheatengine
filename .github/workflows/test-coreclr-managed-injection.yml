@@ -5,14 +5,12 @@ on:
   push:
     branches:
       - main
-      - test/coreclr-managed-injection
     paths:
       - '.github/workflows/test-coreclr-managed-injection.yml'
       - 'tests/coreclr-injection/**'
-      - 'Tables/Terraria/.bootstrap/**'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   smoke-test:
@@ -21,48 +19,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Materialize staged Terraria CT
-        shell: pwsh
-        run: |
-          $bootstrapDir = 'Tables/Terraria/.bootstrap'
-          $target = 'Tables/Terraria/Terraria-1.4.5.x-Table-Ver-7-CE45-x64-CoreCLR-Experimental.CT'
-          $expected = '2f5a37a9cc490fa392dbf995c38be394f100963c4e457b3a56d16ccc93fd2997'
-
-          if (!(Test-Path $bootstrapDir)) {
-            Write-Host 'No CT bootstrap staging directory present.'
-            exit 0
-          }
-
-          $parts = @(Get-ChildItem -Path $bootstrapDir -Filter 'part*.txt' -File | Sort-Object Name)
-          if ($parts.Count -eq 0) { throw 'CT bootstrap directory exists but contains no parts.' }
-
-          $base64 = ($parts | ForEach-Object { (Get-Content $_.FullName -Raw).Trim() }) -join ''
-          $compressed = [Convert]::FromBase64String($base64)
-          $input = [IO.MemoryStream]::new($compressed)
-          $gzip = [IO.Compression.GzipStream]::new($input, [IO.Compression.CompressionMode]::Decompress)
-          $output = [IO.File]::Create($target)
-          try {
-            $gzip.CopyTo($output)
-          }
-          finally {
-            $output.Dispose()
-            $gzip.Dispose()
-            $input.Dispose()
-          }
-
-          $actual = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
-          Write-Host "Materialized CT SHA-256: $actual"
-          if ($actual -ne $expected) { throw "CT hash mismatch. Expected $expected, got $actual" }
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- $target
-          git rm -r -- $bootstrapDir
-          git commit -m 'Add Terraria x64 CoreCLR table [skip ci]'
-          git push origin "HEAD:$env:GITHUB_REF_NAME"
 
       - name: Install .NET 10 SDK
         uses: actions/setup-dotnet@v4
