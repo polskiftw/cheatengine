@@ -1,0 +1,189 @@
+name: Test CE x64 CoreCLR managed injection
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - test/coreclr-managed-injection
+    paths:
+      - '.github/workflows/test-coreclr-managed-injection.yml'
+      - 'tests/coreclr-injection/**'
+      - 'Tables/Terraria/.bootstrap/**'
+
+permissions:
+  contents: write
+
+jobs:
+  smoke-test:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Materialize staged Terraria CT
+        shell: pwsh
+        run: |
+          $bootstrapDir = 'Tables/Terraria/.bootstrap'
+          $target = 'Tables/Terraria/Terraria-1.4.5.x-Table-Ver-7-CE45-x64-CoreCLR-Experimental.CT'
+          $expected = '2f5a37a9cc490fa392dbf995c38be394f100963c4e457b3a56d16ccc93fd2997'
+
+          if (!(Test-Path $bootstrapDir)) {
+            Write-Host 'No CT bootstrap staging directory present.'
+            exit 0
+          }
+
+          $parts = @(Get-ChildItem -Path $bootstrapDir -Filter 'part*.txt' -File | Sort-Object Name)
+          if ($parts.Count -eq 0) { throw 'CT bootstrap directory exists but contains no parts.' }
+
+          $base64 = ($parts | ForEach-Object { (Get-Content $_.FullName -Raw).Trim() }) -join ''
+          $compressed = [Convert]::FromBase64String($base64)
+          $input = [IO.MemoryStream]::new($compressed)
+          $gzip = [IO.Compression.GzipStream]::new($input, [IO.Compression.CompressionMode]::Decompress)
+          $output = [IO.File]::Create($target)
+          try {
+            $gzip.CopyTo($output)
+          }
+          finally {
+            $output.Dispose()
+            $gzip.Dispose()
+            $input.Dispose()
+          }
+
+          $actual = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "Materialized CT SHA-256: $actual"
+          if ($actual -ne $expected) { throw "CT hash mismatch. Expected $expected, got $actual" }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- $target
+          git rm -r -- $bootstrapDir
+          git commit -m 'Add Terraria x64 CoreCLR table [skip ci]'
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build synthetic CoreCLR host and managed payload
+        shell: pwsh
+        run: |
+          dotnet publish '.\tests\coreclr-injection\Host\CoreClrInjectionHost.csproj' -c Release -r win-x64 --self-contained false -o '.\tests\coreclr-injection\out\host'
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic CoreCLR host build failed.' }
+
+          dotnet build '.\tests\coreclr-injection\Payload\CoreClrInjectionPayload.csproj' -c Release -o '.\tests\coreclr-injection\out\payload'
+          if ($LASTEXITCODE -ne 0) { throw 'Managed payload build failed.' }
+
+      - name: Check out official Cheat Engine 7.5 source
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch 7.5 --recurse-submodules https://github.com/cheat-engine/cheat-engine.git upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to clone official Cheat Engine 7.5 source.' }
+          $commit = (git -C upstream rev-parse HEAD).Trim()
+          Write-Host "Official Cheat Engine 7.5 commit: $commit"
+
+      - name: Download official Lazarus 2.2.2 / FPC 3.2.2 toolchain
+        shell: pwsh
+        run: |
+          $base = 'https://downloads.sourceforge.net/project/lazarus/Lazarus%20Windows%2064%20bits/Lazarus%202.2.2'
+          curl.exe -L --fail --retry 5 --retry-delay 5 "$base/lazarus-2.2.2-fpc-3.2.2-win64.exe" -o lazarus-main.exe
+          curl.exe -L --fail --retry 5 --retry-delay 5 "$base/lazarus-2.2.2-fpc-3.2.2-cross-i386-win32-win64.exe" -o lazarus-cross.exe
+          if (!(Test-Path lazarus-main.exe) -or ((Get-Item lazarus-main.exe).Length -lt 10MB)) { throw 'Lazarus installer download looks invalid.' }
+          if (!(Test-Path lazarus-cross.exe) -or ((Get-Item lazarus-cross.exe).Length -lt 5MB)) { throw 'Lazarus cross-compiler installer download looks invalid.' }
+
+      - name: Install Lazarus toolchain
+        shell: pwsh
+        run: |
+          $args = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=C:\Lazarus')
+          $p = Start-Process -FilePath "$PWD\lazarus-main.exe" -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Main Lazarus installer exited with $($p.ExitCode)" }
+          $p = Start-Process -FilePath "$PWD\lazarus-cross.exe" -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Lazarus cross-compiler installer exited with $($p.ExitCode)" }
+          if (!(Test-Path 'C:\Lazarus\lazbuild.exe')) { throw 'lazbuild.exe was not installed.' }
+
+      - name: Build Cheat Engine 7.5 x64 from official source
+        shell: pwsh
+        run: |
+          & 'C:\Lazarus\lazbuild.exe' '--build-mode=Release 64-Bit' '.\upstream\Cheat Engine\cheatengine.lpi'
+          if ($LASTEXITCODE -ne 0) { throw "lazbuild failed with exit code $LASTEXITCODE" }
+
+          $exe = '.\upstream\Cheat Engine\bin\cheatengine-x86_64.exe'
+          if (!(Test-Path $exe)) { throw 'Expected cheatengine-x86_64.exe was not produced.' }
+          if (!(Test-Path '.\upstream\Cheat Engine\bin\autorun\DotNetInject.lua')) { throw 'Official DotNetInject.lua is missing.' }
+
+      - name: Prove CE can inject a managed assembly into x64 CoreCLR
+        shell: pwsh
+        run: |
+          $testDir = Join-Path $env:GITHUB_WORKSPACE 'tests\coreclr-injection'
+          $ready = Join-Path $testDir 'host-ready.txt'
+          $stop = Join-Path $testDir 'host-stop.txt'
+          $result = Join-Path $testDir 'ce-result.txt'
+          $marker = Join-Path $testDir 'payload-ran.txt'
+          $hostExe = Join-Path $testDir 'out\host\CoreClrInjectionHost.exe'
+          $ceDir = Join-Path $env:GITHUB_WORKSPACE 'upstream\Cheat Engine\bin'
+          $ceExe = Join-Path $ceDir 'cheatengine-x86_64.exe'
+          $autorun = Join-Path $ceDir 'autorun\zz_coreclr_injection_smoke.lua'
+
+          Remove-Item $ready,$stop,$result,$marker -Force -ErrorAction SilentlyContinue
+          Copy-Item (Join-Path $testDir 'ce-smoke.lua') $autorun -Force
+
+          $hostProc = $null
+          $ceProc = $null
+          try {
+            $hostArgs = '"{0}" "{1}"' -f $ready, $stop
+            $hostProc = Start-Process -FilePath $hostExe -ArgumentList $hostArgs -PassThru
+
+            for ($i = 0; $i -lt 60 -and !(Test-Path $ready); $i++) {
+              Start-Sleep -Milliseconds 250
+            }
+            if (!(Test-Path $ready)) { throw 'Synthetic CoreCLR host never became ready.' }
+
+            Write-Host 'Synthetic target:'
+            Get-Content $ready | Write-Host
+
+            $ceProc = Start-Process -FilePath $ceExe -WorkingDirectory $ceDir -PassThru
+
+            for ($i = 0; $i -lt 180 -and !(Test-Path $result); $i++) {
+              Start-Sleep -Milliseconds 500
+              if ($ceProc.HasExited -and !(Test-Path $result)) { break }
+              $ceProc.Refresh()
+            }
+
+            if (!(Test-Path $result)) {
+              $exitText = if ($ceProc.HasExited) { "CE exited with code $($ceProc.ExitCode)" } else { 'CE was still running' }
+              throw "CE produced no smoke-test result; $exitText."
+            }
+
+            $resultText = (Get-Content $result -Raw).Trim()
+            Write-Host "CE result: $resultText"
+            if ($resultText -notmatch '^SUCCESS RETURN=23063 ') { throw "CoreCLR injection failed: $resultText" }
+
+            if (!(Test-Path $marker)) { throw 'CE reported success, but managed payload marker is missing.' }
+            Write-Host 'Managed payload marker:'
+            Get-Content $marker | Write-Host
+          }
+          finally {
+            New-Item -ItemType File -Path $stop -Force | Out-Null
+            if ($ceProc -ne $null -and !$ceProc.HasExited) {
+              Stop-Process -Id $ceProc.Id -Force -ErrorAction SilentlyContinue
+            }
+            if ($hostProc -ne $null) {
+              $hostProc.WaitForExit(5000) | Out-Null
+              if (!$hostProc.HasExited) { Stop-Process -Id $hostProc.Id -Force -ErrorAction SilentlyContinue }
+            }
+          }
+
+      - name: Upload smoke-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coreclr-injection-smoke-evidence
+          path: |
+            tests/coreclr-injection/host-ready.txt
+            tests/coreclr-injection/ce-result.txt
+            tests/coreclr-injection/payload-ran.txt
+          if-no-files-found: warn
