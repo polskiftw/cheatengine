@@ -2336,18 +2336,19 @@ x64ctDisableAllFishAreCrates()
             </CheatEntry>
             <CheatEntry>
               <ID>10838</ID>
-              <Description>"⚠ x64 TODO - 🎁 Lucky Treasure Bags (all chance drops succeed, RNG preserved)"</Description>
+              <Description>"🎁 Lucky Treasure Bags (all chance drops succeed, RNG preserved)"</Description>
               <Color>40FF00</Color>
               <VariableType>Auto Assembler Script</VariableType>
               <AssemblerScript>[ENABLE]
 {$lua}
 if syntaxcheck then return end
-x64ctUnsupported('Lucky Treasure Bags','complex generated hooks depend on x86 managed calling convention and stack arguments; needs a dedicated x64 rewrite')
+x64ctEnableLuckyTreasureBags()
 {$asm}
 
 [DISABLE]
 {$lua}
 if syntaxcheck then return end
+x64ctDisableLuckyTreasureBags()
 {$asm}
 </AssemblerScript>
             </CheatEntry>
@@ -2372,6 +2373,7 @@ x64ct.cleaners = x64ct.cleaners or {}
 x64ct.drop = x64ct.drop or { enabled100=false, enabledMult=false }
 x64ct.rerolls = x64ct.rerolls or {}
 x64ct.fishCratesEnabled = x64ct.fishCratesEnabled or false
+x64ct.luckyBagsEnabled = x64ct.luckyBagsEnabled or false
 
 local function x64ctHex(v)
   if not v then return '0' end
@@ -2713,6 +2715,7 @@ function x64ctStopFeatures()
   pcall(x64ctDisableInfiniteAmmo)
   pcall(x64ctDisableNpcImmortal)
   pcall(x64ctDisableAllFishAreCrates,true)
+  pcall(x64ctDisableLuckyTreasureBags,true)
   pcall(x64ctDisableMaxStackHotkey)
   pcall(x64ctDisableItemVacuum,true)
   pcall(x64ctDisableDrop100,true)
@@ -2810,6 +2813,25 @@ function x64ctDisableAllFishAreCrates(silent)
   x64ct.fishCratesEnabled=false
   if not ok and not silent then error(err) end
   if ok then print('[Terraria x64 CT] All Fish Are Crates disabled.') end
+end
+-- --------------------------------------------------------------------------
+-- Lucky Treasure Bags. Vanilla OpenBossBag runs first. The CE-injected helper
+-- observes QuickSpawnItem calls, then supplements only independent chance-based
+-- drops that did not occur. Random-choice groups and vanilla stack/prefix RNG
+-- are left alone. Eligible Hardmode bags get exactly one random developer set.
+-- --------------------------------------------------------------------------
+function x64ctEnableLuckyTreasureBags()
+  x64ctHelperCommand('lucky-on')
+  x64ct.luckyBagsEnabled=true
+  print('[Terraria x64 CT] Lucky Treasure Bags enabled.')
+end
+
+function x64ctDisableLuckyTreasureBags(silent)
+  if not x64ct.luckyBagsEnabled then return end
+  local ok,err=pcall(x64ctHelperCommand,'lucky-off')
+  x64ct.luckyBagsEnabled=false
+  if not ok and not silent then error(err) end
+  if ok then print('[Terraria x64 CT] Lucky Treasure Bags disabled.') end
 end
 -- --------------------------------------------------------------------------
 -- Buffs and debuff cleaners
@@ -3469,6 +3491,7 @@ attachTimer.OnTimer=autoAttach
 attachTimer.Enabled=true
 </LuaScript>
   <Comments>
-Experimental x64 CoreCLR port for gloader/TerrariaRelease.dll. Original x86 table left untouched. Runtime field offsets are resolved through Cheat Engine .NET metadata. Entries prefixed with x64 TODO are deliberately disabled. All Fish Are Crates uses the CE-injected managed helper in Tables/Terraria/runtime; it is not a gmod.
+Experimental x64 CoreCLR port for gloader/TerrariaRelease.dll. Original x86 table left untouched. Runtime field offsets are resolved through Cheat Engine .NET metadata. Entries prefixed with x64 TODO are deliberately disabled. All Fish Are Crates uses the CE-injected managed helper in Tables/Terraria/runtime; it is not a gmod. Lucky Treasure Bags uses the same CE-injected helper and preserves vanilla random-choice groups while guaranteeing independent chance drops.
 </Comments>
 </CheatTable>
+
