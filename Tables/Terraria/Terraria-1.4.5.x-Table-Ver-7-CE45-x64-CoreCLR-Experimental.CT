@@ -1,0 +1,3405 @@
+<?xml version='1.0' encoding='utf-8'?>
+<CheatTable CheatEngineTableVersion="45">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>0</ID>
+      <Description>"Terraria 1.4.5.x - x64 CoreCLR EXPERIMENTAL PORT"</Description>
+      <Options moHideChildren="1" moDeactivateChildrenAsWell="1" />
+      <Color>FF0080</Color>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnable()
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisable()
+{$asm}
+</AssemblerScript>
+      <CheatEntries>
+        <CheatEntry>
+          <ID>1</ID>
+          <Description>"Base Pointer (player object address)"</Description>
+          <ShowAsHex>1</ShowAsHex>
+          <Color>6E6E6E</Color>
+          <VariableType>8 Bytes</VariableType>
+          <Address>myPlayer</Address>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>158</ID>
+              <Description>"👤 Player Name (edit; reload save to keep)"</Description>
+              <Color>808080</Color>
+              <VariableType>String</VariableType>
+              <Length>256</Length>
+              <Unicode>1</Unicode>
+              <CodePage>0</CodePage>
+              <ZeroTerminate>1</ZeroTerminate>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>159</ID>
+              <Description>"# Name Length"</Description>
+              <Color>808080</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10803</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>13</ID>
+          <Description>"═══ ❤️ Player (Stats, Vitals &amp; Inventory) ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>0000FF</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>3</ID>
+              <Description>"❤️ Life"</Description>
+              <Color>0000FF</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>4</ID>
+              <Description>"❤️ Life Max"</Description>
+              <Color>0000FF</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>5</ID>
+              <Description>"★ Mana"</Description>
+              <Color>C80000</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>6</ID>
+              <Description>"★ Mana Max"</Description>
+              <Color>C80000</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>9</ID>
+              <Description>"💨 Breath"</Description>
+              <Color>C08000</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10</ID>
+              <Description>"💨 Breath Max"</Description>
+              <Color>C08000</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>154</ID>
+              <Description>"🔥 Lava Time (fire/lava immunity frames)"</Description>
+              <Color>4080FF</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>155</ID>
+              <Description>"🔥 Lava Max*"</Description>
+              <Color>4080FF</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>156</ID>
+              <Description>"🦅 Wing Time"</Description>
+              <Color>00FFFF</Color>
+              <VariableType>Float</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>157</ID>
+              <Description>"🦅 Wing Time Max*"</Description>
+              <Color>00FFFF</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>7</ID>
+              <Description>"🛡️ Defense*"</Description>
+              <Color>005A96</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>8</ID>
+              <Description>"Luck*"</Description>
+              <Color>009600</Color>
+              <VariableType>Float</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>11</ID>
+              <Description>"Respawn Timer (0=instant)"</Description>
+              <Color>6E6E6E</Color>
+              <VariableType>4 Bytes</VariableType>
+              <Address>0</Address>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>14</ID>
+              <Description>"🎒 INVENTORY (slot 1)"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>005A96</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>16</ID>
+                  <Description>"type (item ID)"</Description>
+                  <Color>C80000</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>17</ID>
+                  <Description>"prefix (modifier)"</Description>
+                  <DropDownList ReadOnly="1">0:(none)
+1:Large
+2:Massive
+3:Dangerous
+4:Savage
+5:Sharp
+6:Pointy
+7:Tiny
+8:Terrible
+9:Small
+10:Dull
+11:Unhappy
+12:Bulky
+13:Shameful
+14:Heavy
+15:Light
+16:Sighted
+17:Rapid
+18:Hasty
+19:Intimidating
+20:Deadly
+21:Staunch
+22:Awful
+23:Lethargic
+24:Awkward
+25:Powerful
+26:Mystic
+27:Adept
+28:Masterful
+29:Inept
+30:Ignorant
+31:Deranged
+32:Intense
+33:Taboo
+34:Celestial
+35:Furious
+36:Keen
+37:Superior
+38:Forceful
+39:Broken
+40:Damaged
+41:Shoddy
+42:Quick
+43:Deadly
+44:Agile
+45:Nimble
+46:Murderous
+47:Slow
+48:Sluggish
+49:Lazy
+50:Annoying
+51:Nasty
+52:Manic
+53:Hurtful
+54:Strong
+55:Unpleasant
+56:Weak
+57:Ruthless
+58:Frenzying
+59:Godly
+60:Demonic
+61:Zealous
+62:Hard
+63:Guarding
+64:Armored
+65:Warding
+66:Arcane
+67:Precise
+68:Lucky
+69:Jagged
+70:Spiked
+71:Angry
+72:Menacing
+73:Brisk
+74:Fleeting
+75:Hasty
+76:Quick
+77:Wild
+78:Rash
+79:Intrepid
+80:Violent
+81:Legendary
+82:Unreal
+83:Mythical
+84:Legendary
+</DropDownList>
+                  <Color>A00082</Color>
+                  <VariableType>Byte</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>18</ID>
+                  <Description>"stack"</Description>
+                  <Color>009600</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>19</ID>
+                  <Description>"maxStack"</Description>
+                  <Color>009600</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>20</ID>
+                  <Description>"favorited"</Description>
+                  <DropDownList ReadOnly="1">0:No
+1:Yes
+</DropDownList>
+                  <VariableType>Byte</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>21</ID>
+                  <Description>"rare (tier color)"</Description>
+                  <DropDownList ReadOnly="1">-13:Master (animated)
+-12:Expert (rainbow)
+-11:Amber (Quest)
+-1:Gray (trash)
+0:White (common)
+1:Blue
+2:Green
+3:Orange
+4:Light Red
+5:Pink
+6:Light Purple
+7:Lime
+8:Yellow
+9:Cyan
+10:Red
+11:Purple (endgame)
+</DropDownList>
+                  <ShowAsSigned>1</ShowAsSigned>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>22</ID>
+                  <Description>"damage"</Description>
+                  <Color>0000C8</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>23</ID>
+                  <Description>"crit %"</Description>
+                  <Color>0000C8</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>24</ID>
+                  <Description>"knockBack"</Description>
+                  <Color>0000C8</Color>
+                  <VariableType>Float</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>25</ID>
+                  <Description>"useTime"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>26</ID>
+                  <Description>"useAnimation"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>27</ID>
+                  <Description>"autoReuse"</Description>
+                  <DropDownList ReadOnly="1">0:No (manual)
+1:Yes (auto)
+</DropDownList>
+                  <VariableType>Byte</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>28</ID>
+                  <Description>"scale (size)"</Description>
+                  <VariableType>Float</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>29</ID>
+                  <Description>"mana cost"</Description>
+                  <Color>C80000</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>30</ID>
+                  <Description>"defense"</Description>
+                  <Color>005A96</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>31</ID>
+                  <Description>"value (coppers)"</Description>
+                  <Color>008CB4</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>32</ID>
+                  <Description>"healLife"</Description>
+                  <Color>009600</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>33</ID>
+                  <Description>"healMana"</Description>
+                  <Color>C80000</Color>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>34</ID>
+                  <Description>"shoot (projectile ID)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>35</ID>
+                  <Description>"shootSpeed"</Description>
+                  <VariableType>Float</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>36</ID>
+                  <Description>"useAmmo"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>37</ID>
+                  <Description>"ammo"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>38</ID>
+                  <Description>"createTile"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>39</ID>
+                  <Description>"createWall"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>40</ID>
+                  <Description>"pick power"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>41</ID>
+                  <Description>"axe power"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>42</ID>
+                  <Description>"hammer power"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>43</ID>
+                  <Description>"tileBoost (range)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>44</ID>
+                  <Description>"fishingPole (power)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>45</ID>
+                  <Description>"buffType"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>46</ID>
+                  <Description>"buffTime"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>47</ID>
+                  <Description>"mountType"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10835</ID>
+              <Description>"⚠ x64 TODO - Max Stack Hovered Item (CTRL+F2)"</Description>
+              <Color>20C0FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Max Stack Hovered Item','the 32-bit table recovered Main.HoverItem from JIT code; the CoreCLR static object needs a GC-safe resolver before this can be trusted')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10806</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>48</ID>
+          <Description>"═══ 🧪 Buffs &amp; Effects ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>FFFF00</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>10809</ID>
+              <Description>"⛔ Debuff Removal"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>C08000</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10810</ID>
+                  <Description>"No Mana Sickness (removes buff 94)"</Description>
+                  <Color>C08000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableCleaner('mana_sickness',94,'')
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableCleaner('mana_sickness')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>10811</ID>
+                  <Description>"No Potion Sickness (buff 21 + reset potion delay)"</Description>
+                  <Color>C08000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableCleaner('potion_sickness',21,'potion')
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableCleaner('potion_sickness')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>10812</ID>
+                  <Description>"No Chaos Rod Cooldown (buff 88 + chaosState)"</Description>
+                  <Color>C08000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableCleaner('chaos_rod',88,'chaos')
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableCleaner('chaos_rod')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>49</ID>
+              <Description>"⚔️ Offensive"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>FF0000</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>50</ID>
+                  <Description>"[7] Magic Power (+20% magic damage)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(7,'50')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(7,'50')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>51</ID>
+                  <Description>"[16] Archery (+20% arrow damage)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(16,'51')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(16,'51')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>52</ID>
+                  <Description>"[14] Thorns (returns damage to attackers)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(14,'52')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(14,'52')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>54</ID>
+                  <Description>"[110] Summoning (+1 max minion)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(110,'54')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(110,'54')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>55</ID>
+                  <Description>"[150] Bewitched (+1 max minion)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(150,'55')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(150,'55')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>57</ID>
+                  <Description>"[115] Rage (+10% crit chance)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(115,'57')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(115,'57')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>58</ID>
+                  <Description>"[117] Wrath (+10% damage)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(117,'58')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(117,'58')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>59</ID>
+                  <Description>"[159] Sharpened (+12% armor penetration)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(159,'59')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(159,'59')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>60</ID>
+                  <Description>"[116] Inferno (fiery ring hurts enemies)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(116,'60')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(116,'60')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>62</ID>
+                  <Description>"[25] Tipsy (+10% melee speed, -4 def)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(25,'62')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(25,'62')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>64</ID>
+                  <Description>"[198] Striking Moment (next hit is a crit)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(198,'64')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(198,'64')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>65</ID>
+                  <Description>"[205] Ballista Panic! (+ballista fire rate)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(205,'65')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(205,'65')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>67</ID>
+                  <Description>"[71] Weapon Imbue: Venom (melee inflicts venom)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(71,'67')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(71,'67')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>68</ID>
+                  <Description>"[73] Weapon Imbue: Cursed Flames (inflicts cursed flames)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(73,'68')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(73,'68')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>69</ID>
+                  <Description>"[74] Weapon Imbue: Fire (melee inflicts fire)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(74,'69')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(74,'69')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>70</ID>
+                  <Description>"[75] Weapon Imbue: Gold (melee inflicts Midas)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(75,'70')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(75,'70')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>71</ID>
+                  <Description>"[76] Weapon Imbue: Ichor (-defense on hit)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(76,'71')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(76,'71')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>72</ID>
+                  <Description>"[77] Weapon Imbue: Nanites (inflicts confusion)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(77,'72')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(77,'72')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>73</ID>
+                  <Description>"[78] Weapon Imbue: Confetti (harmless confetti)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(78,'73')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(78,'73')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>74</ID>
+                  <Description>"[79] Weapon Imbue: Poison (melee inflicts poison)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(79,'74')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(79,'74')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>145</ID>
+                  <Description>"[60] Leaf Crystal (auto-fires crystal leaves)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(60,'145')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(60,'145')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>147</ID>
+                  <Description>"[28] Werewolf (+melee stats at night)"</Description>
+                  <Color>FF0000</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(28,'147')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(28,'147')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>75</ID>
+              <Description>"🛡️ Defensive"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>4080FF</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>76</ID>
+                  <Description>"[2] Regeneration (+2 HP/sec)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(2,'76')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(2,'76')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>77</ID>
+                  <Description>"[5] Ironskin (+8 defense)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(5,'77')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(5,'77')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>78</ID>
+                  <Description>"[6] Mana Regeneration (faster mana regen)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(6,'78')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(6,'78')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>79</ID>
+                  <Description>"[58] Rapid Healing (fast life recovery)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(58,'79')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(58,'79')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>82</ID>
+                  <Description>"[63] Panic! (+100% move speed after hit)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(63,'82')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(63,'82')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>84</ID>
+                  <Description>"[113] Lifeforce (+20% max HP)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(113,'84')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(113,'84')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>85</ID>
+                  <Description>"[114] Endurance (-10% damage taken)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(114,'85')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(114,'85')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>86</ID>
+                  <Description>"[124] Warmth (-30% cold damage)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(124,'86')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(124,'86')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>87</ID>
+                  <Description>"[165] Dryad's Blessing (+8 def, +thorns)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(165,'87')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(165,'87')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>88</ID>
+                  <Description>"[215] The Bast Defense (+5 defense)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(215,'88')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(215,'88')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>89</ID>
+                  <Description>"[43] Paladin's Shield (redirects 25% ally dmg)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(43,'89')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(43,'89')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>90</ID>
+                  <Description>"[48] Honey (+life regen)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(48,'90')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(48,'90')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>91</ID>
+                  <Description>"[87] Cozy Fire (+life regen)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(87,'91')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(87,'91')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>92</ID>
+                  <Description>"[89] Heart Lamp (+life regen)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(89,'92')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(89,'92')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>148</ID>
+                  <Description>"[59] Holy Protection (dodge next hit)"</Description>
+                  <Color>4080FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(59,'148')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(59,'148')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>93</ID>
+              <Description>"🔧 Utility"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>40FF00</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>94</ID>
+                  <Description>"[1] Obsidian Skin (lava &amp; fire block immunity)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(1,'94')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(1,'94')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>95</ID>
+                  <Description>"[3] Swiftness (+25% move speed)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(3,'95')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(3,'95')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>96</ID>
+                  <Description>"[4] Gills (breathe underwater)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(4,'96')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(4,'96')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>97</ID>
+                  <Description>"[8] Featherfall (slow falling)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(8,'97')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(8,'97')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>98</ID>
+                  <Description>"[9] Spelunker (highlights ores/treasure)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(9,'98')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(9,'98')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>99</ID>
+                  <Description>"[10] Invisibility (become invisible)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(10,'99')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(10,'99')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>100</ID>
+                  <Description>"[11] Shine (emit light)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(11,'100')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(11,'100')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>101</ID>
+                  <Description>"[12] Night Owl (night vision)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(12,'101')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(12,'101')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>102</ID>
+                  <Description>"[15] Water Walking (walk on liquids)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(15,'102')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(15,'102')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>103</ID>
+                  <Description>"[17] Hunter (highlights enemies)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(17,'103')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(17,'103')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>104</ID>
+                  <Description>"[18] Gravitation (flip gravity)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(18,'104')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(18,'104')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>105</ID>
+                  <Description>"[34] Merfolk (swim &amp; breathe underwater)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(34,'105')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(34,'105')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>106</ID>
+                  <Description>"[104] Mining (+25% mine speed)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(104,'106')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(104,'106')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>107</ID>
+                  <Description>"[105] Heartreach (+heart pickup range)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(105,'107')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(105,'107')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>108</ID>
+                  <Description>"[106] Calm (-17% spawn rate)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(106,'108')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(106,'108')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>109</ID>
+                  <Description>"[107] Builder (+placement speed/range)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(107,'109')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(107,'109')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>110</ID>
+                  <Description>"[108] Titan (+100% knockback)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(108,'110')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(108,'110')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>111</ID>
+                  <Description>"[109] Flipper (swim freely)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(109,'111')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(109,'111')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>112</ID>
+                  <Description>"[111] Dangersense (highlights hazards)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(111,'112')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(111,'112')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>113</ID>
+                  <Description>"[29] Clairvoyance (+5% magic dmg/crit)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(29,'113')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(29,'113')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>114</ID>
+                  <Description>"[343] Biome Sight (reveals biome blocks)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(343,'114')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(343,'114')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>117</ID>
+                  <Description>"[93] Ammo Box (20% ammo conservation)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(93,'117')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(93,'117')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>118</ID>
+                  <Description>"[112] Ammo Reservation (20% ammo conservation)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(112,'118')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(112,'118')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>119</ID>
+                  <Description>"[121] Fishing (+15% fishing power)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(121,'119')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(121,'119')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>120</ID>
+                  <Description>"[122] Sonar (see what's biting)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(122,'120')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(122,'120')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>121</ID>
+                  <Description>"[123] Crate (+10% crate chance)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(123,'121')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(123,'121')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>125</ID>
+                  <Description>"[26] Well Fed (+3 def, +2% stats)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(26,'125')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(26,'125')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>128</ID>
+                  <Description>"[146] Happy! (+move speed, happiness)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(146,'128')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(146,'128')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>129</ID>
+                  <Description>"[192] Sugar Rush (+20% move/mine)"</Description>
+                  <Color>40FF00</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(192,'129')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(192,'129')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>130</ID>
+              <Description>"⭐ Special"</Description>
+              <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+              <Color>8000FF</Color>
+              <GroupHeader>1</GroupHeader>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10813</ID>
+                  <Description>"[147] Banner (bonus vs all enemies)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(147,'10813')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(147,'10813')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>152</ID>
+                  <Description>"[72] Midas (enemies drop more coins)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(72,'152')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(72,'152')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>116</ID>
+                  <Description>"[13] Battle (+100% spawn rate)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(13,'116')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(13,'116')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>122</ID>
+                  <Description>"[157] Peace Candle (-23% spawn rate)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(157,'122')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(157,'122')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>123</ID>
+                  <Description>"[158] Star in a Bottle (+mana regen)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(158,'123')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(158,'123')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>126</ID>
+                  <Description>"[206] Plenty Satisfied (+4 def, +3% stats)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(206,'126')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(206,'126')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+                <CheatEntry>
+                  <ID>127</ID>
+                  <Description>"[207] Exquisitely Stuffed (+5 def, +4% stats)"</Description>
+                  <Color>8000FF</Color>
+                  <VariableType>Auto Assembler Script</VariableType>
+                  <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableBuff(207,'127')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableBuff(207,'127')
+{$asm}
+</AssemblerScript>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>144</ID>
+              <Description>"🚩 All Banners (+50% dmg, -25% dmg taken)"</Description>
+              <Color>4080FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableAllBanners()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableAllBanners()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10805</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>135</ID>
+          <Description>"═══ 🕊️ Movement ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>C87800</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>136</ID>
+              <Description>"Fly + Noclip (hold WASD/arrows; Space=up)"</Description>
+              <Color>C87800</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableFly()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableFly()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10804</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>137</ID>
+          <Description>"═══ 🔨 Crafting &amp; World ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>005AA0</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>138</ID>
+              <Description>"⚠ x64 TODO - Craft Anything (ignore station, materials, environment)"</Description>
+              <Color>005AA0</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Craft Anything','needs a new x64 CoreCLR Recipe.UpdateRecipeList behavior patch')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10807</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>139</ID>
+          <Description>"═══ ⚔️ Combat &amp; Survival ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>0096C8</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>140</ID>
+              <Description>"God Mode"</Description>
+              <Color>0096B4</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableGod()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableGod()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10828</ID>
+              <Description>"⚠ x64 TODO - Force Journey Mode"</Description>
+              <Color>20C020</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Force Journey Mode','old version patches an x86 JIT branch; changing Player.difficulty directly would risk saving a permanent character-mode change')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10830</ID>
+              <Description>"⚠ x64 TODO - Research All (Journey - unlock duplication for all items)"</Description>
+              <Color>20C020</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Research All','needs game-thread-safe managed invocation of RegisterItemSacrifice; the old x86 Main.Update trampoline cannot be reused')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10833</ID>
+              <Description>"Infinite Ammo (x64 refill; best effort)"</Description>
+              <Color>20C0FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableInfiniteAmmo()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableInfiniteAmmo()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10834</ID>
+              <Description>"Infinite Mana (no consumption)"</Description>
+              <Color>20C0FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableInfiniteMana()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableInfiniteMana()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10808</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10814</ID>
+          <Description>"═══ 🎯 NPCs &amp; Drops ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>C800C8</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>10815</ID>
+              <Description>"100% Drop Rate (guaranteed drops)"</Description>
+              <Color>C800C8</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableDrop100()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableDrop100()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10816</ID>
+              <Description>"Drop Multiplier (x N max drop quantity / CommonDrop)"</Description>
+              <Options moHideChildren="1" />
+              <Color>C800C8</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableDropMultiplier()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableDropMultiplier()
+{$asm}
+</AssemblerScript>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10817</ID>
+                  <Description>"Multiplier (1=normal, 2=double, 10=x10)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>dropMultiplier</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10818</ID>
+              <Description>"Roll 30x Rerolls (30 drop chances per kill)"</Description>
+              <Color>C800C8</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableRerolls(30)
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableRerolls()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10819</ID>
+              <Description>"Item Vacuum / Grab Range (2.625 Default)"</Description>
+              <Options moHideChildren="1" />
+              <Color>30C0FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableItemVacuum()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableItemVacuum()
+{$asm}
+</AssemblerScript>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10820</ID>
+                  <Description>"Range (blocks)"</Description>
+                  <VariableType>Float</VariableType>
+                  <Address>grabBlocks</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10821</ID>
+              <Description>"⚠ x64 TODO - Kill Multiplier (1 kill = N kills: N drops, coins, banner/bestiary progress)"</Description>
+              <Options moHideChildren="1" />
+              <Color>E060E0</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Kill Multiplier','re-enters NPC.NPCLoot recursively using the x86 CLR ABI; requires a new x64/game-thread hook')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10822</ID>
+                  <Description>"Kill Count (x)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10823</ID>
+              <Description>"NPC Immortal (Town NPCs - true invincibility)"</Description>
+              <Color>0000FF</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctEnableNpcImmortal()
+{$asm}
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctDisableNpcImmortal()
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10824</ID>
+              <Description>"⚠ x64 TODO - Death Aura (enemies near you die automatically)"</Description>
+              <Options moHideChildren="1" />
+              <Color>E00000</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Death Aura','old hook calls NPC.checkDead inside UpdateNPC and assigns interaction credit; requires a new x64/game-thread-safe implementation')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+              <CheatEntries>
+                <CheatEntry>
+                  <ID>10825</ID>
+                  <Description>"Radius (blocks)"</Description>
+                  <VariableType>Float</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10831</ID>
+              <Description>"⚠ x64 TODO - Spawn Rate"</Description>
+              <Options moHideChildren="1" />
+              <Color>FF8000</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Spawn Rate','old hook rewrites Spawner.GetSpawnRate out parameters at the x86 epilogue; needs a new x64 method hook')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+              <CheatEntries>
+                <CheatEntry NoCheckbox="1">
+                  <ID>10832</ID>
+                  <Description>"Multiplier (X, 0=disable)"</Description>
+                  <VariableType>4 Bytes</VariableType>
+                  <Address>0</Address>
+                </CheatEntry>
+              </CheatEntries>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10839</ID>
+          <Description>"═══════════════════════════"</Description>
+          <Options moAllowManualCollapseAndExpand="1" />
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>10837</ID>
+          <Description>"═══ 🤖 ChatGPT Additions ═══"</Description>
+          <Options moHideChildren="1" moAllowManualCollapseAndExpand="1" />
+          <Color>C800C8</Color>
+          <GroupHeader>1</GroupHeader>
+          <CheatEntries>
+            <CheatEntry>
+              <ID>10836</ID>
+              <Description>"⚠ x64 TODO - 🎣 All Fish Are Crates"</Description>
+              <Color>40FF00</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('All Fish Are Crates','the old generated hook relies on the x86 managed ABI for an out-parameter; x64 argument placement must be re-derived at runtime')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+            <CheatEntry>
+              <ID>10838</ID>
+              <Description>"⚠ x64 TODO - 🎁 Lucky Treasure Bags (all chance drops succeed, RNG preserved)"</Description>
+              <Color>40FF00</Color>
+              <VariableType>Auto Assembler Script</VariableType>
+              <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+x64ctUnsupported('Lucky Treasure Bags','complex generated hooks depend on x86 managed calling convention and stack arguments; needs a dedicated x64 rewrite')
+{$asm}
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+{$asm}
+</AssemblerScript>
+            </CheatEntry>
+          </CheatEntries>
+        </CheatEntry>
+      </CheatEntries>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols />
+  <LuaScript>-- ============================================================================
+-- Terraria 1.4.5.x x64 CoreCLR compatibility layer
+-- Experimental port generated for Claire's gloader x64 Terraria runtime.
+-- Uses Cheat Engine's .NET/.NET Core collectors to resolve live metadata/offsets.
+-- ============================================================================
+
+x64ct = x64ct or {}
+x64ct.types = x64ct.types or {}
+x64ct.typeIndex = x64ct.typeIndex or {}
+x64ct.timers = x64ct.timers or {}
+x64ct.buffState = x64ct.buffState or {}
+x64ct.cleaners = x64ct.cleaners or {}
+x64ct.drop = x64ct.drop or { enabled100=false, enabledMult=false }
+x64ct.rerolls = x64ct.rerolls or {}
+
+local function x64ctHex(v)
+  if not v then return '0' end
+  return string.format('%X',v)
+end
+
+local function x64ctSafeDestroy(o)
+  if o then pcall(function() o.destroy() end) end
+end
+
+function x64ctUnsupported(name, reason)
+  error(name..' is not enabled in this first x64 port. '..reason)
+end
+
+function x64ctStopTimer(key)
+  local t=x64ct.timers[key]
+  if t then
+    t.Enabled=false
+    x64ctSafeDestroy(t)
+    x64ct.timers[key]=nil
+  end
+end
+
+function x64ctStartTimer(key, interval, fn)
+  x64ctStopTimer(key)
+  local t=createTimer(nil)
+  t.Interval=interval
+  t.OnTimer=function()
+    local ok,err=pcall(fn)
+    if not ok then
+      t.Enabled=false
+      print('[Terraria x64 CT] '..key..' stopped: '..tostring(err))
+    end
+  end
+  x64ct.timers[key]=t
+  local ok,err=pcall(fn)
+  if not ok then
+    x64ctStopTimer(key)
+    error(err)
+  end
+  t.Enabled=true
+  return t
+end
+
+function x64ctEnsureDotNet()
+  if getOpenedProcessID()==0 then error('No process is attached. Launch Terraria through gloader first.') end
+  if not targetIs64Bit() then
+    error('This is the x64 port. Attach Cheat Engine to the running 64-bit gloader.exe Terraria process, not stock Terraria.exe.')
+  end
+  if type(LaunchDotNetInterface)~='function' or type(getDotNetDataCollector)~='function' then
+    error('Cheat Engine .NET/.NET Core support is unavailable. CE 7.5+ with its normal autorun files is required.')
+  end
+  local ok,ret=pcall(LaunchDotNetInterface)
+  if not ok or ret==false then error('Cheat Engine could not start its .NET Core interface: '..tostring(ret)) end
+  x64ct.dc=getDotNetDataCollector()
+  if not x64ct.dc then error('Cheat Engine could not obtain the .NET data collector.') end
+  if not x64ct.nullHandle or x64ct.nullHandle==0 then
+    x64ct.nullHandle=dotnet_wrapobject(0)
+  end
+  return true
+end
+
+function x64ctIndexTypes()
+  if x64ct.indexed then return end
+  x64ctEnsureDotNet()
+  local dc=x64ct.dc
+  local domains=dc.enumDomains() or {}
+  local fallback={}
+  for i=1,#domains do
+    local modules=dc.enumModuleList(domains[i].DomainHandle) or {}
+    for j=1,#modules do
+      local mn=extractFileName(modules[j].Name or '')
+      local low=string.lower(mn)
+      if string.find(low,'terraria',1,true) then
+        local mid=dotnet_getModuleID(mn)
+        local classes=dc.enumTypeDefs(modules[j].ModuleHandle) or {}
+        for k=1,#classes do
+          local n=classes[k].Name
+          if n and string.sub(n,1,9)=='Terraria.' then
+            local cur=x64ct.typeIndex[n]
+            local preferred=(low=='terrariarelease.dll')
+            if (not cur) or preferred then
+              x64ct.typeIndex[n]={
+                name=n,
+                token=classes[k].TypeDefToken,
+                moduleHandle=modules[j].ModuleHandle,
+                moduleName=mn,
+                moduleId=mid,
+                preferred=preferred
+              }
+            end
+          end
+        end
+      else
+        fallback[#fallback+1]={domain=domains[i],module=modules[j]}
+      end
+    end
+  end
+  -- Fallback for a differently named assembly: only pay the cost if Terraria.Main wasn't found.
+  if not x64ct.typeIndex['Terraria.Main'] then
+    for _,pair in ipairs(fallback) do
+      local m=pair.module
+      local classes=dc.enumTypeDefs(m.ModuleHandle) or {}
+      local mn=extractFileName(m.Name or '')
+      local mid=dotnet_getModuleID(mn)
+      for k=1,#classes do
+        local n=classes[k].Name
+        if n and string.sub(n,1,9)=='Terraria.' then
+          x64ct.typeIndex[n]={name=n,token=classes[k].TypeDefToken,moduleHandle=m.ModuleHandle,moduleName=mn,moduleId=mid}
+        end
+      end
+      if x64ct.typeIndex['Terraria.Main'] then break end
+    end
+  end
+  if not x64ct.typeIndex['Terraria.Main'] then
+    error('Terraria.Main was not found in the attached CoreCLR process. Make sure the actual game is running through gloader.')
+  end
+  if x64ct.typeIndex['Terraria.Main'].moduleId==nil then
+    error('Cheat Engine found Terraria metadata but its invasive CoreCLR module map did not resolve the game assembly.')
+  end
+  x64ct.indexed=true
+end
+
+function x64ctType(name, optional)
+  x64ctIndexTypes()
+  if x64ct.types[name] then return x64ct.types[name] end
+  local m=x64ct.typeIndex[name]
+  if not m then
+    if optional then return nil end
+    error('Managed type not found: '..name)
+  end
+  local td=x64ct.dc.getTypeDefData(m.moduleHandle,m.token)
+  if not td then
+    if optional then return nil end
+    error('Could not read managed type layout: '..name)
+  end
+  local fields={}
+  if td.Fields then
+    for i=1,#td.Fields do
+      local f=td.Fields[i]
+      fields[f.Name]=f
+    end
+  end
+  m.data=td
+  m.fields=fields
+  m.methods=x64ct.dc.getTypeDefMethods(m.moduleHandle,m.token) or {}
+  x64ct.types[name]=m
+  return m
+end
+
+function x64ctField(typeName, fieldName, optional)
+  local t=x64ctType(typeName,optional)
+  if not t then return nil end
+  local f=t.fields[fieldName]
+  if not f and typeName=='Terraria.Player' then
+    local et=x64ctType('Terraria.Entity',true)
+    if et then f=et.fields[fieldName] end
+  end
+  if not f and optional then return nil end
+  if not f then error(typeName..'.'..fieldName..' field was not found in this Terraria build.') end
+  return f
+end
+
+function x64ctMethod(typeName, methodName, paramCount, optional)
+  local t=x64ctType(typeName,optional)
+  if not t then return nil end
+  local matches={}
+  for i=1,#t.methods do
+    local m=t.methods[i]
+    if m.Name==methodName then
+      local accept=true
+      if paramCount~=nil then
+        local ok,ret,sig,types=pcall(dotnet_getMethodParameters,t.moduleId,m.MethodToken)
+        if not ok or not types or (#types-1)~=paramCount then accept=false end
+      end
+      if accept then matches[#matches+1]=m end
+    end
+  end
+  if #matches==0 then
+    if optional then return nil end
+    error(typeName..'.'..methodName..' method was not found.')
+  end
+  if #matches&gt;1 and paramCount~=nil then
+    if optional then return nil end
+    error(typeName..'.'..methodName..' overload was ambiguous.')
+  end
+  return matches[1],t
+end
+
+function x64ctMethodEntry(typeName, methodName, paramCount)
+  local m,t=x64ctMethod(typeName,methodName,paramCount,false)
+  local a=dotnet_getMethodEntryPoint(t.moduleId,m.MethodToken)
+  if not a or a==0 then error('Could not JIT/resolve '..typeName..'.'..methodName) end
+  return a,m,t
+end
+
+function x64ctParseObjectValue(s)
+  if not s or s=='' or s=='null' then return 0 end
+  local h=string.match(s,':%s*([0-9A-Fa-f]+)%s*$')
+  if not h then return 0 end
+  local n=tonumber('0x'..h)
+  return n or 0
+end
+
+function x64ctStaticObject(typeName, fieldName)
+  local t=x64ctType(typeName,false)
+  local f=x64ctField(typeName,fieldName,true)
+  if f and f.IsStatic then
+    local s=dotnet_getFieldValue(t.moduleId,f.Token,0)
+    local p=x64ctParseObjectValue(s)
+    if p~=0 then return p end
+  end
+  local m=x64ctMethod(typeName,'get_'..fieldName,0,true)
+  if m then
+    local h=dotnet_invoke_method(t.moduleId,m.MethodToken,x64ct.nullHandle,{})
+    if h and h~=0 then
+      local p=readPointer(h) or 0
+      pcall(dotnet_unwrapobject,h)
+      return p
+    end
+  end
+  return 0
+end
+
+function x64ctGetRecord(id)
+  local al=getAddressList()
+  for i=0,al.Count-1 do
+    local mr=al.getMemoryRecord(i)
+    local ok,v=pcall(function() return tonumber(mr.ID) end)
+    if ok and v==id then return mr end
+  end
+  return nil
+end
+
+function x64ctSetDirectRecord(id, off)
+  local mr=x64ctGetRecord(id)
+  if not mr then return end
+  mr.Address='[myPlayer]+'..x64ctHex(off)
+  mr.OffsetCount=0
+end
+
+function x64ctSetPointerRecord(id, baseOff, finalOff)
+  local mr=x64ctGetRecord(id)
+  if not mr then return end
+  mr.Address='[myPlayer]+'..x64ctHex(baseOff)
+  mr.OffsetCount=1
+  mr.Offset[0]=finalOff
+end
+
+function x64ctSetArrayItemRecord(id, arrOff, firstOff, fieldOff)
+  local mr=x64ctGetRecord(id)
+  if not mr then return end
+  mr.Address='[myPlayer]+'..x64ctHex(arrOff)
+  mr.OffsetCount=2
+  mr.Offset[0]=fieldOff
+  mr.Offset[1]=firstOff
+end
+
+function x64ctPatchRecords()
+  local pfields={
+    [3]='statLife',[4]='statLifeMax',[5]='statMana',[6]='statManaMax',
+    [7]='statDefense',[8]='luck',[9]='breath',[10]='breathMax',[11]='respawnTimer',
+    [154]='lavaTime',[155]='lavaMax',[156]='wingTime',[157]='wingTimeMax'
+  }
+  for id,name in pairs(pfields) do
+    local f=x64ctField('Terraria.Player',name,true)
+    if f then x64ctSetDirectRecord(id,f.Offset) end
+  end
+
+  local nf=x64ctField('Terraria.Player','name',true)
+  if nf then
+    -- x64 CoreCLR System.String: length @ +8, first UTF-16 char @ +0xC.
+    x64ctSetPointerRecord(158,nf.Offset,0x0C)
+    x64ctSetPointerRecord(159,nf.Offset,0x08)
+  end
+
+  local inv=x64ctField('Terraria.Player','inventory',true)
+  if inv then
+    local imap={
+      [16]='type',[17]='prefix',[18]='stack',[19]='maxStack',[20]='favorited',[21]='rare',
+      [22]='damage',[23]='crit',[24]='knockBack',[25]='useTime',[26]='useAnimation',
+      [27]='autoReuse',[28]='scale',[29]='mana',[30]='defense',[31]='value',[32]='healLife',
+      [33]='healMana',[34]='shoot',[35]='shootSpeed',[36]='useAmmo',[37]='ammo',
+      [38]='createTile',[39]='createWall',[40]='pick',[41]='axe',[42]='hammer',
+      [43]='tileBoost',[44]='fishingPole',[45]='buffType',[46]='buffTime',[47]='mountType'
+    }
+    for id,name in pairs(imap) do
+      local f=x64ctField('Terraria.Item',name,true)
+      if f then x64ctSetArrayItemRecord(id,inv.Offset,0x10,f.Offset) end
+    end
+  end
+end
+
+function x64ctRefreshPlayerHandle()
+  local m,t=x64ctMethod('Terraria.Main','get_LocalPlayer',0,false)
+  local h=dotnet_invoke_method(t.moduleId,m.MethodToken,x64ct.nullHandle,{})
+  local p=0
+  if h and h~=0 then p=readPointer(h) or 0 end
+  if x64ct.playerHandle and x64ct.playerHandle~=0 then pcall(dotnet_unwrapobject,x64ct.playerHandle) end
+  x64ct.playerHandle=h
+  if x64ct.myPlayerStorage then writePointer(x64ct.myPlayerStorage,p) end
+  return p
+end
+
+function x64ctPlayer()
+  if not x64ct.myPlayerStorage then return 0 end
+  local p=readPointer(x64ct.myPlayerStorage)
+  if not p then return 0 end
+  return p
+end
+
+function x64ctEnable()
+  x64ctEnsureDotNet()
+  if x64ct.myPlayerStorage then return end
+  pcall(unregisterSymbol,'myPlayer')
+  x64ct.myPlayerStorage=allocateMemory(8)
+  if not x64ct.myPlayerStorage then error('Could not allocate the x64 myPlayer pointer cell.') end
+  writePointer(x64ct.myPlayerStorage,0)
+  registerSymbol('myPlayer',x64ct.myPlayerStorage,true)
+  x64ctIndexTypes()
+  x64ctRefreshPlayerHandle()
+  x64ctPatchRecords()
+  x64ct.playerRefreshTick=0
+  x64ctStartTimer('player-refresh',250,function()
+    x64ct.playerRefreshTick=x64ct.playerRefreshTick+1
+    local p=(x64ct.playerHandle and readPointer(x64ct.playerHandle)) or 0
+    if x64ct.myPlayerStorage then writePointer(x64ct.myPlayerStorage,p or 0) end
+    if x64ct.playerRefreshTick%8==0 then x64ctRefreshPlayerHandle() end
+  end)
+  print('[Terraria x64 CT] CoreCLR metadata resolver enabled; myPlayer='..x64ctHex(x64ctPlayer()))
+end
+
+function x64ctStopFeatures()
+  -- Run feature-specific cleanup first so original values/bytes and GC handles are restored.
+  pcall(x64ctDisableFly)
+  pcall(x64ctDisableGod)
+  pcall(x64ctDisableAllBanners)
+  pcall(x64ctDisableInfiniteMana)
+  pcall(x64ctDisableInfiniteAmmo)
+  pcall(x64ctDisableNpcImmortal)
+  pcall(x64ctDisableMaxStackHotkey)
+  pcall(x64ctDisableItemVacuum,true)
+  pcall(x64ctDisableDrop100,true)
+  pcall(x64ctDisableDropMultiplier,true)
+  pcall(x64ctDisableRerolls,true)
+
+  local buffs={}
+  for _,st in pairs(x64ct.buffState) do
+    if st and st.buffId and st.recordKey then buffs[#buffs+1]={st.buffId,st.recordKey} end
+  end
+  for _,b in ipairs(buffs) do pcall(x64ctDisableBuff,b[1],b[2]) end
+
+  local keys={}
+  for k,_ in pairs(x64ct.timers) do if k~='player-refresh' then keys[#keys+1]=k end end
+  for _,k in ipairs(keys) do x64ctStopTimer(k) end
+end
+
+function x64ctDisable()
+  x64ctStopFeatures()
+  x64ctStopTimer('player-refresh')
+  if x64ct.playerHandle and x64ct.playerHandle~=0 then pcall(dotnet_unwrapobject,x64ct.playerHandle) end
+  x64ct.playerHandle=nil
+  if x64ct.nullHandle and x64ct.nullHandle~=0 then pcall(dotnet_unwrapobject,x64ct.nullHandle) end
+  x64ct.nullHandle=nil
+  pcall(unregisterSymbol,'myPlayer')
+  if x64ct.myPlayerStorage then pcall(deAlloc,x64ct.myPlayerStorage) end
+  x64ct.myPlayerStorage=nil
+  x64ct.indexed=nil
+  x64ct.typeIndex={}
+  x64ct.types={}
+end
+
+-- --------------------------------------------------------------------------
+-- Buffs and debuff cleaners
+-- --------------------------------------------------------------------------
+function x64ctBuffArrays()
+  local p=x64ctPlayer(); if p==0 then return nil end
+  local ft=x64ctField('Terraria.Player','buffType',false)
+  local fm=x64ctField('Terraria.Player','buffTime',false)
+  local at=readPointer(p+ft.Offset) or 0
+  local am=readPointer(p+fm.Offset) or 0
+  if at==0 or am==0 then return nil end
+  local nt=readInteger(at+8) or 0
+  local nm=readInteger(am+8) or 0
+  local n=math.min(nt,nm)
+  return at,am,n
+end
+
+function x64ctFindBuff(buffId, allowFree)
+  local at,am,n=x64ctBuffArrays()
+  if not at then return nil end
+  local free=nil
+  for i=0,n-1 do
+    local v=readInteger(at+0x10+i*4) or 0
+    if v==buffId then return i,at,am,n,false end
+    if allowFree and free==nil and v==0 then free=i end
+  end
+  if free~=nil then return free,at,am,n,true end
+  return nil,at,am,n,false
+end
+
+function x64ctEnableBuff(buffId,key)
+  key='buff:'..tostring(key)
+  if x64ct.buffState[key] then return end
+  local slot,at,am,n,isFree=x64ctFindBuff(buffId,true)
+  local st={inserted=false,originalTime=nil,buffId=buffId,recordKey=string.gsub(tostring(key),'^buff:','')}
+  if slot~=nil then
+    if isFree then st.inserted=true else st.originalTime=readInteger(am+0x10+slot*4) or 0 end
+  end
+  x64ct.buffState[key]=st
+  x64ctStartTimer(key,100,function()
+    local s,tarr,marr,n2,free=x64ctFindBuff(buffId,true)
+    if s==nil then return end
+    if free then
+      writeInteger(tarr+0x10+s*4,buffId)
+      writeInteger(marr+0x10+s*4,600)
+      st.inserted=true
+    else
+      local tm=readInteger(marr+0x10+s*4) or 0
+      if tm&lt;600 then writeInteger(marr+0x10+s*4,600) end
+    end
+  end)
+end
+
+function x64ctDisableBuff(buffId,key)
+  key='buff:'..tostring(key)
+  x64ctStopTimer(key)
+  local st=x64ct.buffState[key]
+  if st then
+    local slot,at,am=x64ctFindBuff(buffId,false)
+    if slot~=nil then
+      if st.inserted and st.originalTime==nil then
+        writeInteger(at+0x10+slot*4,0)
+        writeInteger(am+0x10+slot*4,0)
+      elseif st.originalTime~=nil then
+        writeInteger(am+0x10+slot*4,math.max(st.originalTime,1))
+      end
+    end
+  end
+  x64ct.buffState[key]=nil
+end
+
+function x64ctClearBuff(buffId)
+  local slot,at,am=x64ctFindBuff(buffId,false)
+  if slot~=nil then
+    writeInteger(at+0x10+slot*4,0)
+    writeInteger(am+0x10+slot*4,0)
+  end
+end
+
+function x64ctWritePlayerIntIfPresent(name,value)
+  local p=x64ctPlayer(); if p==0 then return end
+  local f=x64ctField('Terraria.Player',name,true)
+  if f then writeInteger(p+f.Offset,value) end
+end
+
+function x64ctWritePlayerBoolIfPresent(name,value)
+  local p=x64ctPlayer(); if p==0 then return end
+  local f=x64ctField('Terraria.Player',name,true)
+  if f then writeByte(p+f.Offset,value and 1 or 0) end
+end
+
+function x64ctEnableCleaner(key,buffId,mode)
+  x64ctStartTimer('clean:'..key,50,function()
+    x64ctClearBuff(buffId)
+    if mode=='potion' then
+      for _,n in ipairs({'potionDelay','restorationDelayTime','mushroomDelayTime','potionDelayTime'}) do
+        x64ctWritePlayerIntIfPresent(n,0)
+      end
+    elseif mode=='chaos' then
+      x64ctWritePlayerBoolIfPresent('chaosState',false)
+    end
+  end)
+end
+
+function x64ctDisableCleaner(key)
+  x64ctStopTimer('clean:'..key)
+end
+
+-- --------------------------------------------------------------------------
+-- Max Stack Hovered Item
+-- --------------------------------------------------------------------------
+function x64ctMaxStackHovered()
+  local p=x64ctPlayer(); if p==0 then return end
+  local hov=x64ctStaticObject('Terraria.Main','HoverItem')
+  if not hov or hov==0 then return end
+  local ftype=x64ctField('Terraria.Item','type',false)
+  local fpref=x64ctField('Terraria.Item','prefix',false)
+  local fstack=x64ctField('Terraria.Item','stack',false)
+  local fmax=x64ctField('Terraria.Item','maxStack',false)
+  local htype=readInteger(hov+ftype.Offset) or 0
+  if htype==0 then return end
+  local hpref=readByte(hov+fpref.Offset) or 0
+  local hstack=readInteger(hov+fstack.Offset) or 0
+
+  local arrays={}
+  local invf=x64ctField('Terraria.Player','inventory',true)
+  if invf then
+    local a=readPointer(p+invf.Offset) or 0
+    if a~=0 then arrays[#arrays+1]=a end
+  end
+  local chest=x64ctType('Terraria.Chest',true)
+  local chitem=chest and x64ctField('Terraria.Chest','item',true) or nil
+  if chitem then
+    for _,name in ipairs({'bank','bank2','bank3','bank4'}) do
+      local bf=x64ctField('Terraria.Player',name,true)
+      if bf then
+        local ch=readPointer(p+bf.Offset) or 0
+        if ch~=0 then
+          local a=readPointer(ch+chitem.Offset) or 0
+          if a~=0 then arrays[#arrays+1]=a end
+        end
+      end
+    end
+  end
+
+  for _,arr in ipairs(arrays) do
+    local n=readInteger(arr+8) or 0
+    for i=0,n-1 do
+      local it=readPointer(arr+0x10+i*8) or 0
+      if it~=0 and (readInteger(it+ftype.Offset) or 0)==htype and
+         (readByte(it+fpref.Offset) or 0)==hpref and (readInteger(it+fstack.Offset) or 0)==hstack then
+        local mx=readInteger(it+fmax.Offset) or 0
+        if mx&gt;0 then writeInteger(it+fstack.Offset,mx) end
+        return
+      end
+    end
+  end
+end
+
+function x64ctEnableMaxStackHotkey()
+  x64ctDisableMaxStackHotkey()
+  x64ct.maxStackHotkey=createHotkey(function()
+    local ok,err=pcall(x64ctMaxStackHovered)
+    if not ok then print('[Terraria x64 CT] Max Stack: '..tostring(err)) end
+  end,VK_CONTROL,VK_F2)
+end
+
+function x64ctDisableMaxStackHotkey()
+  if x64ct.maxStackHotkey then x64ctSafeDestroy(x64ct.maxStackHotkey) x64ct.maxStackHotkey=nil end
+end
+
+-- --------------------------------------------------------------------------
+-- All Banners
+-- --------------------------------------------------------------------------
+function x64ctEnableAllBanners()
+  local t=x64ctType('Terraria.SceneMetrics',false)
+  local objs=x64ct.dc.enumAllObjectsOfType(t.moduleHandle,t.token) or {}
+  if #objs==0 then error('No live SceneMetrics object was found.') end
+  if x64ct.bannerHandle then pcall(dotnet_unwrapobject,x64ct.bannerHandle) end
+  x64ct.bannerHandle=dotnet_wrapobject(objs[1])
+  if not x64ct.bannerHandle or x64ct.bannerHandle==0 then error('Could not hold the SceneMetrics object.') end
+  local fb=x64ctField('Terraria.SceneMetrics','NPCBannerBuff',false)
+  local fh=x64ctField('Terraria.SceneMetrics','hasBanner',false)
+  x64ctStartTimer('all-banners',10,function()
+    local sm=readPointer(x64ct.bannerHandle) or 0
+    if sm==0 then return end
+    local arr=readPointer(sm+fb.Offset) or 0
+    if arr~=0 then
+      local n=readInteger(arr+8) or 0
+      for i=0,n-1 do writeByte(arr+0x10+i,1) end
+    end
+    writeByte(sm+fh.Offset,1)
+  end)
+end
+function x64ctDisableAllBanners()
+  x64ctStopTimer('all-banners')
+  if x64ct.bannerHandle then pcall(dotnet_unwrapobject,x64ct.bannerHandle) end
+  x64ct.bannerHandle=nil
+end
+
+-- --------------------------------------------------------------------------
+-- God mode
+-- --------------------------------------------------------------------------
+function x64ctEnableGod()
+  local p=x64ctPlayer(); if p==0 then error('Enter a world before enabling God Mode.') end
+  local f=x64ctField('Terraria.Player','creativeGodMode',false)
+  x64ct.godOriginal=(readByte(p+f.Offset) or 0)~=0
+  x64ctStartTimer('god',10,function()
+    local q=x64ctPlayer(); if q~=0 then writeByte(q+f.Offset,1) end
+  end)
+end
+function x64ctDisableGod()
+  x64ctStopTimer('god')
+  local p=x64ctPlayer()
+  local f=x64ctField('Terraria.Player','creativeGodMode',true)
+  if p~=0 and f and x64ct.godOriginal~=nil then writeByte(p+f.Offset,x64ct.godOriginal and 1 or 0) end
+  x64ct.godOriginal=nil
+end
+
+-- --------------------------------------------------------------------------
+-- Fly + Noclip: direct Entity.position/velocity + Player control/ghost fields
+-- --------------------------------------------------------------------------
+function x64ctEnableFly()
+  local p=x64ctPlayer(); if p==0 then error('Enter a world before enabling Fly + Noclip.') end
+  local pos=x64ctField('Terraria.Player','position',false)
+  local vel=x64ctField('Terraria.Player','velocity',false)
+  local ghost=x64ctField('Terraria.Player','ghost',false)
+  local fl=x64ctField('Terraria.Player','controlLeft',false)
+  local fr=x64ctField('Terraria.Player','controlRight',false)
+  local fu=x64ctField('Terraria.Player','controlUp',false)
+  local fd=x64ctField('Terraria.Player','controlDown',false)
+  local fj=x64ctField('Terraria.Player','controlJump',false)
+  x64ct.flyGhostOriginal=(readByte(p+ghost.Offset) or 0)~=0
+  x64ct.flyEnabledGod=false
+  local g=x64ctGetRecord(140)
+  if g and not g.Active then
+    local ok=pcall(function() g.Active=true end)
+    if ok then x64ct.flyEnabledGod=true end
+  end
+  x64ctStartTimer('fly',15,function()
+    local q=x64ctPlayer(); if q==0 then return end
+    writeByte(q+ghost.Offset,1)
+    local dx,dy=0,0
+    if (readByte(q+fl.Offset) or 0)~=0 then dx=dx-1 end
+    if (readByte(q+fr.Offset) or 0)~=0 then dx=dx+1 end
+    if (readByte(q+fu.Offset) or 0)~=0 then dy=dy-1 end
+    if (readByte(q+fd.Offset) or 0)~=0 then dy=dy+1 end
+    if (readByte(q+fj.Offset) or 0)~=0 then dy=dy-1 end
+    local speed=8.0
+    if dx~=0 and dy~=0 then speed=speed*0.70710678 end
+    local x=readFloat(q+pos.Offset) or 0
+    local y=readFloat(q+pos.Offset+4) or 0
+    writeFloat(q+pos.Offset,x+dx*speed)
+    writeFloat(q+pos.Offset+4,y+dy*speed)
+    writeFloat(q+vel.Offset,0)
+    writeFloat(q+vel.Offset+4,0)
+  end)
+end
+
+function x64ctDisableFly()
+  x64ctStopTimer('fly')
+  local p=x64ctPlayer()
+  local ghost=x64ctField('Terraria.Player','ghost',true)
+  local vel=x64ctField('Terraria.Player','velocity',true)
+  if p~=0 and ghost and x64ct.flyGhostOriginal~=nil then writeByte(p+ghost.Offset,x64ct.flyGhostOriginal and 1 or 0) end
+  if p~=0 and vel then writeFloat(p+vel.Offset,0) writeFloat(p+vel.Offset+4,0) end
+  if x64ct.flyEnabledGod then
+    local g=x64ctGetRecord(140)
+    if g then pcall(function() g.Active=false end) end
+  end
+  x64ct.flyEnabledGod=false
+  x64ct.flyGhostOriginal=nil
+end
+
+-- --------------------------------------------------------------------------
+-- Infinite mana (non-decreasing current mana, capped by current max)
+-- --------------------------------------------------------------------------
+function x64ctEnableInfiniteMana()
+  local p=x64ctPlayer(); if p==0 then error('Enter a world before enabling Infinite Mana.') end
+  local fm=x64ctField('Terraria.Player','statMana',false)
+  local fmax=x64ctField('Terraria.Player','statManaMax2',true) or x64ctField('Terraria.Player','statManaMax',false)
+  x64ct.manaBaseline=readInteger(p+fm.Offset) or 0
+  x64ctStartTimer('infinite-mana',10,function()
+    local q=x64ctPlayer(); if q==0 then return end
+    local cur=readInteger(q+fm.Offset) or 0
+    local mx=readInteger(q+fmax.Offset) or cur
+    if x64ct.manaBaseline&gt;mx then x64ct.manaBaseline=mx end
+    if cur&lt;x64ct.manaBaseline then
+      writeInteger(q+fm.Offset,x64ct.manaBaseline)
+    elseif cur&gt;x64ct.manaBaseline then
+      x64ct.manaBaseline=math.min(cur,mx)
+    end
+  end)
+end
+function x64ctDisableInfiniteMana() x64ctStopTimer('infinite-mana') x64ct.manaBaseline=nil end
+
+-- --------------------------------------------------------------------------
+-- Infinite ammo: x64-safe stack refill. It is intentionally labeled best effort.
+-- --------------------------------------------------------------------------
+function x64ctEnableInfiniteAmmo()
+  local p=x64ctPlayer(); if p==0 then error('Enter a world before enabling Infinite Ammo.') end
+  local invf=x64ctField('Terraria.Player','inventory',false)
+  local ft=x64ctField('Terraria.Item','type',false)
+  local fp=x64ctField('Terraria.Item','prefix',false)
+  local fs=x64ctField('Terraria.Item','stack',false)
+  local fa=x64ctField('Terraria.Item','ammo',false)
+  x64ct.ammoState={}
+  x64ctStartTimer('infinite-ammo',10,function()
+    local q=x64ctPlayer(); if q==0 then return end
+    local arr=readPointer(q+invf.Offset) or 0; if arr==0 then return end
+    local n=readInteger(arr+8) or 0
+    for i=0,n-1 do
+      local it=readPointer(arr+0x10+i*8) or 0
+      if it~=0 then
+        local typ=readInteger(it+ft.Offset) or 0
+        local pref=readByte(it+fp.Offset) or 0
+        local stack=readInteger(it+fs.Offset) or 0
+        local ammo=readInteger(it+fa.Offset) or 0
+        if typ~=0 and ammo&gt;0 and stack&gt;0 then
+          local st=x64ct.ammoState[i]
+          if not st or st.type~=typ or st.prefix~=pref then
+            st={type=typ,prefix=pref,baseline=stack,original=stack,bumped=false}
+            if stack==1 then
+              st.baseline=2; st.bumped=true; writeInteger(it+fs.Offset,2); stack=2
+            end
+            x64ct.ammoState[i]=st
+          else
+            if stack&lt;st.baseline then writeInteger(it+fs.Offset,st.baseline)
+            elseif stack&gt;st.baseline then st.baseline=stack end
+          end
+        else
+          x64ct.ammoState[i]=nil
+        end
+      end
+    end
+  end)
+end
+
+function x64ctDisableInfiniteAmmo()
+  x64ctStopTimer('infinite-ammo')
+  local p=x64ctPlayer()
+  if p~=0 and x64ct.ammoState then
+    local invf=x64ctField('Terraria.Player','inventory',true)
+    local ft=x64ctField('Terraria.Item','type',true)
+    local fp=x64ctField('Terraria.Item','prefix',true)
+    local fs=x64ctField('Terraria.Item','stack',true)
+    if invf and ft and fp and fs then
+      local arr=readPointer(p+invf.Offset) or 0
+      if arr~=0 then
+        for i,st in pairs(x64ct.ammoState) do
+          local it=readPointer(arr+0x10+i*8) or 0
+          if it~=0 and st.bumped and (readInteger(it+ft.Offset) or 0)==st.type and (readByte(it+fp.Offset) or 0)==st.prefix then
+            local cur=readInteger(it+fs.Offset) or 0
+            if cur==st.baseline then writeInteger(it+fs.Offset,st.original) end
+          end
+        end
+      end
+    end
+  end
+  x64ct.ammoState=nil
+end
+
+-- --------------------------------------------------------------------------
+-- CommonDrop object editing. Uses GC handles so objects remain valid if CoreCLR moves them.
+-- --------------------------------------------------------------------------
+local x64ctCommonDropTypes={
+  'Terraria.GameContent.ItemDropRules.CommonDrop',
+  'Terraria.GameContent.ItemDropRules.CommonDropNotScalingWithLuck',
+  'Terraria.GameContent.ItemDropRules.CommonDropWithRerolls',
+  'Terraria.GameContent.ItemDropRules.DropLocalPerClientAndResetsNPCMoneyTo0',
+  'Terraria.GameContent.ItemDropRules.DropPerPlayerOnThePlayer',
+  'Terraria.GameContent.ItemDropRules.ItemDropWithConditionRule'
+}
+
+function x64ctEnsureDropCapture()
+  if x64ct.drop.objects then return end
+  x64ctEnsureDotNet()
+  local base=x64ctType('Terraria.GameContent.ItemDropRules.CommonDrop',false)
+  local fd=x64ctField(base.name,'chanceDenominator',false)
+  local fmin=x64ctField(base.name,'amountDroppedMinimum',false)
+  local fmax=x64ctField(base.name,'amountDroppedMaximum',false)
+  x64ct.drop.fields={den=fd,min=fmin,max=fmax}
+  x64ct.drop.objects={}
+  local seen={}
+  for _,name in ipairs(x64ctCommonDropTypes) do
+    local t=x64ctType(name,true)
+    if t then
+      local objs=x64ct.dc.enumAllObjectsOfType(t.moduleHandle,t.token) or {}
+      for i=1,#objs do
+        local a=objs[i]
+        if a and a~=0 and not seen[a] then
+          seen[a]=true
+          local h=dotnet_wrapobject(a)
+          if h and h~=0 then
+            local p=readPointer(h) or 0
+            if p~=0 then
+              x64ct.drop.objects[#x64ct.drop.objects+1]={
+                handle=h,
+                den=readInteger(p+fd.Offset) or 1,
+                min=readInteger(p+fmin.Offset) or 1,
+                max=readInteger(p+fmax.Offset) or 1
+              }
+            else
+              pcall(dotnet_unwrapobject,h)
+            end
+          end
+        end
+      end
+    end
+  end
+  if #x64ct.drop.objects==0 then error('No live CommonDrop rule objects were found. Enter a world, then try again.') end
+end
+
+function x64ctApplyDropState()
+  if not x64ct.drop.objects then return end
+  local f=x64ct.drop.fields
+  local mult=1
+  if x64ct.drop.enabledMult and x64ct.drop.multStorage then
+    mult=readInteger(x64ct.drop.multStorage) or 1
+    if mult&lt;1 then mult=1 end
+    if mult&gt;1000 then mult=1000 end
+  end
+  for _,o in ipairs(x64ct.drop.objects) do
+    local p=readPointer(o.handle) or 0
+    if p~=0 then
+      writeInteger(p+f.den.Offset,x64ct.drop.enabled100 and 1 or o.den)
+      writeInteger(p+f.min.Offset,math.max(1,o.min*mult))
+      writeInteger(p+f.max.Offset,math.max(1,o.max*mult))
+    end
+  end
+end
+
+function x64ctReleaseDropCapture()
+  if not x64ct.drop.objects then return end
+  local f=x64ct.drop.fields
+  for _,o in ipairs(x64ct.drop.objects) do
+    local p=readPointer(o.handle) or 0
+    if p~=0 then
+      writeInteger(p+f.den.Offset,o.den)
+      writeInteger(p+f.min.Offset,o.min)
+      writeInteger(p+f.max.Offset,o.max)
+    end
+    pcall(dotnet_unwrapobject,o.handle)
+  end
+  x64ct.drop.objects=nil
+  x64ct.drop.fields=nil
+end
+
+function x64ctEnableDrop100()
+  x64ctEnsureDropCapture()
+  x64ct.drop.enabled100=true
+  x64ctApplyDropState()
+end
+function x64ctDisableDrop100(silent)
+  if not x64ct.drop then return end
+  x64ct.drop.enabled100=false
+  if x64ct.drop.objects then x64ctApplyDropState() end
+  if not x64ct.drop.enabledMult then x64ctReleaseDropCapture() end
+end
+
+function x64ctEnableDropMultiplier()
+  x64ctEnsureDropCapture()
+  pcall(unregisterSymbol,'dropMultiplier')
+  x64ct.drop.multStorage=allocateMemory(4)
+  if not x64ct.drop.multStorage then error('Could not allocate dropMultiplier.') end
+  writeInteger(x64ct.drop.multStorage,2)
+  registerSymbol('dropMultiplier',x64ct.drop.multStorage,true)
+  x64ct.drop.enabledMult=true
+  x64ctStartTimer('drop-multiplier',100,x64ctApplyDropState)
+end
+function x64ctDisableDropMultiplier(silent)
+  x64ctStopTimer('drop-multiplier')
+  if not x64ct.drop then return end
+  x64ct.drop.enabledMult=false
+  if x64ct.drop.objects then x64ctApplyDropState() end
+  pcall(unregisterSymbol,'dropMultiplier')
+  if x64ct.drop.multStorage then pcall(deAlloc,x64ct.drop.multStorage) end
+  x64ct.drop.multStorage=nil
+  if not x64ct.drop.enabled100 then x64ctReleaseDropCapture() end
+end
+
+-- CommonDropWithRerolls: set the managed rerolls field instead of patching an x86 loop branch.
+function x64ctEnableRerolls(count)
+  local t=x64ctType('Terraria.GameContent.ItemDropRules.CommonDropWithRerolls',false)
+  local f=x64ctField(t.name,'rerolls',true)
+  if not f then error('CommonDropWithRerolls.rerolls field was not found in this Terraria build.') end
+  local objs=x64ct.dc.enumAllObjectsOfType(t.moduleHandle,t.token) or {}
+  x64ct.rerolls.objects={}
+  for i=1,#objs do
+    local h=dotnet_wrapobject(objs[i])
+    if h and h~=0 then
+      local p=readPointer(h) or 0
+      if p~=0 then
+        x64ct.rerolls.objects[#x64ct.rerolls.objects+1]={handle=h,original=readInteger(p+f.Offset) or 0}
+      else pcall(dotnet_unwrapobject,h) end
+    end
+  end
+  x64ct.rerolls.field=f
+  if #x64ct.rerolls.objects==0 then error('No live CommonDropWithRerolls objects were found.') end
+  for _,o in ipairs(x64ct.rerolls.objects) do
+    local p=readPointer(o.handle) or 0
+    if p~=0 then writeInteger(p+f.Offset,count) end
+  end
+end
+function x64ctDisableRerolls(silent)
+  if not x64ct.rerolls or not x64ct.rerolls.objects then return end
+  local f=x64ct.rerolls.field
+  for _,o in ipairs(x64ct.rerolls.objects) do
+    local p=readPointer(o.handle) or 0
+    if p~=0 and f then writeInteger(p+f.Offset,o.original) end
+    pcall(dotnet_unwrapobject,o.handle)
+  end
+  x64ct.rerolls.objects=nil
+  x64ct.rerolls.field=nil
+end
+
+-- --------------------------------------------------------------------------
+-- Item Vacuum. Override managed GetItemGrabRange entry with: mov eax,imm32 ; ret
+-- The original 6 bytes are restored exactly on disable.
+-- --------------------------------------------------------------------------
+function x64ctVacuumWriteReturn()
+  if not x64ct.vacuumAddress or not x64ct.vacuumStorage then return end
+  local blocks=readFloat(x64ct.vacuumStorage) or 2.625
+  if blocks&lt;0 then blocks=0 end
+  if blocks&gt;10000 then blocks=10000 end
+  local px=math.floor(blocks*16+0.5)
+  local b1=px%256
+  local b2=math.floor(px/256)%256
+  local b3=math.floor(px/65536)%256
+  local b4=math.floor(px/16777216)%256
+  writeBytes(x64ct.vacuumAddress,0xB8,b1,b2,b3,b4,0xC3)
+  if type(flushInstructionCache)=='function' then pcall(flushInstructionCache,x64ct.vacuumAddress,6) end
+end
+
+function x64ctEnableItemVacuum()
+  if x64ct.vacuumAddress then return end
+  local a=x64ctMethodEntry('Terraria.Player','GetItemGrabRange',1)
+  local original=readBytes(a,6,true)
+  if not original or #original~=6 then error('Could not read GetItemGrabRange entry bytes.') end
+  x64ct.vacuumAddress=a
+  x64ct.vacuumOriginal=original
+  pcall(unregisterSymbol,'grabBlocks')
+  x64ct.vacuumStorage=allocateMemory(4)
+  if not x64ct.vacuumStorage then error('Could not allocate grabBlocks.') end
+  writeFloat(x64ct.vacuumStorage,2.625)
+  registerSymbol('grabBlocks',x64ct.vacuumStorage,true)
+  x64ctStartTimer('item-vacuum',50,x64ctVacuumWriteReturn)
+end
+
+function x64ctDisableItemVacuum(silent)
+  x64ctStopTimer('item-vacuum')
+  if x64ct.vacuumAddress and x64ct.vacuumOriginal then
+    pcall(function() writeBytes(x64ct.vacuumAddress,x64ct.vacuumOriginal) end)
+    if type(flushInstructionCache)=='function' then pcall(flushInstructionCache,x64ct.vacuumAddress,6) end
+  end
+  pcall(unregisterSymbol,'grabBlocks')
+  if x64ct.vacuumStorage then pcall(deAlloc,x64ct.vacuumStorage) end
+  x64ct.vacuumStorage=nil
+  x64ct.vacuumAddress=nil
+  x64ct.vacuumOriginal=nil
+end
+
+-- --------------------------------------------------------------------------
+-- Town NPC immortality. Stronger than the old death-only rescue: while enabled,
+-- town NPCs are marked dontTakeDamage. Original flags are restored per live object.
+-- --------------------------------------------------------------------------
+function x64ctEnableNpcImmortal()
+  local t=x64ctType('Terraria.NPC',false)
+  local fa=x64ctField('Terraria.NPC','active',false)
+  local ft=x64ctField('Terraria.NPC','townNPC',false)
+  local fd=x64ctField('Terraria.NPC','dontTakeDamage',false)
+  local objs=x64ct.dc.enumAllObjectsOfType(t.moduleHandle,t.token) or {}
+  if #objs==0 then error('No live Terraria.NPC objects were found.') end
+  x64ct.npcImmortalObjects={}
+  for i=1,#objs do
+    local h=dotnet_wrapobject(objs[i])
+    if h and h~=0 then x64ct.npcImmortalObjects[#x64ct.npcImmortalObjects+1]={handle=h,original=nil} end
+  end
+  x64ctStartTimer('npc-immortal',100,function()
+    for _,o in ipairs(x64ct.npcImmortalObjects) do
+      local npc=readPointer(o.handle) or 0
+      if npc~=0 and (readByte(npc+fa.Offset) or 0)~=0 and (readByte(npc+ft.Offset) or 0)~=0 then
+        if o.original==nil then o.original=readByte(npc+fd.Offset) or 0 end
+        writeByte(npc+fd.Offset,1)
+      end
+    end
+  end)
+end
+
+function x64ctDisableNpcImmortal()
+  x64ctStopTimer('npc-immortal')
+  if x64ct.npcImmortalObjects then
+    local fd=x64ctField('Terraria.NPC','dontTakeDamage',true)
+    for _,o in ipairs(x64ct.npcImmortalObjects) do
+      local npc=readPointer(o.handle) or 0
+      if npc~=0 and fd and o.original~=nil then writeByte(npc+fd.Offset,o.original) end
+      pcall(dotnet_unwrapobject,o.handle)
+    end
+  end
+  x64ct.npcImmortalObjects=nil
+end
+
+-- ============================================================================
+-- UI: Compact Mode + Creator Links + x64 gloader auto-attach
+-- ============================================================================
+function cycleFullCompact(sender, force)
+  local form = getMainForm()
+  local state = not (compactmenuitem.Caption == 'Compact View Mode')
+  if force ~= nil then state = not force end
+  compactmenuitem.Caption = state and 'Compact View Mode' or 'Full View Mode'
+  form.Splitter1.Visible = state
+  form.Panel4.Visible = state
+  form.Panel5.Visible = state
+end
+
+function addCustomInterface()
+  if customInterfaceAdded then return end
+  local parent = getMainForm().Menu.Items
+
+  local ucItem = createMenuItem(parent)
+  parent.add(ucItem)
+  ucItem.Caption = 'UnknownCheats'
+  ucItem.OnClick = function() shellExecute('https://www.unknowncheats.me/forum/members/2529642.html') end
+
+  local flItem = createMenuItem(parent)
+  parent.add(flItem)
+  flItem.Caption = 'FearLess'
+  flItem.OnClick = function() shellExecute('https://fearlessrevolution.com/memberlist.php?mode=viewprofile&amp;u=252368') end
+
+  compactmenuitem = createMenuItem(parent)
+  parent.add(compactmenuitem)
+  compactmenuitem.Caption = 'Compact View Mode'
+  compactmenuitem.OnClick = cycleFullCompact
+
+  customInterfaceAdded = true
+end
+
+function autoAttach()
+  if getOpenedProcessID() == 0 then
+    local pid=getProcessIDFromProcessName('gloader.exe')
+    if pid~=0 then
+      openProcess('gloader.exe')
+      attachTimer.Enabled=false
+    end
+  else
+    attachTimer.Enabled=false
+  end
+end
+
+addCustomInterface()
+cycleFullCompact(nil,true)
+
+if attachTimer then x64ctSafeDestroy(attachTimer) end
+attachTimer=createTimer(getMainForm())
+attachTimer.Interval=1000
+attachTimer.OnTimer=autoAttach
+attachTimer.Enabled=true
+</LuaScript>
+  <Comments>
+Experimental x64 CoreCLR port for gloader/TerrariaRelease.dll. Original x86 table left untouched. Runtime field offsets are resolved through Cheat Engine .NET metadata. Entries prefixed with x64 TODO are deliberately disabled.
+</Comments>
+</CheatTable>
